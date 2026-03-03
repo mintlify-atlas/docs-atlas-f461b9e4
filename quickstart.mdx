@@ -148,18 +148,21 @@ Before you begin, ensure you have the following installed:
     touch .env
     ```
     
-    Add your database connection string and JWT secret:
+    Add your database connection string and authentication secret:
     
     ```bash .env
     # Database
     POSTGRES_URL="postgresql://YOUR_USERNAME@localhost:5432/coders2029"
     
     # Authentication (generate a random secret)
-    JWT_SECRET="your-super-secret-jwt-key-change-this-in-production"
+    AUTH_SECRET="your-super-secret-jwt-key-change-this-in-production"
+    
+    # Admin password
+    ADMIN_PASSWORD="your-admin-password"
     ```
     
     <Warning>
-      Replace `YOUR_USERNAME` with your actual username (run `whoami` on macOS/Linux). Use a strong, random JWT secret in production.
+      Replace `YOUR_USERNAME` with your actual username (run `whoami` on macOS/Linux). Use a strong, random secret for `AUTH_SECRET` in production.
     </Warning>
     
     **Example connection strings:**

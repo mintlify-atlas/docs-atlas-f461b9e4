@@ -1,0 +1,97 @@
+{
+  "projectType": "saas",
+  "projectName": "Coders 2029 Hackathon Site",
+  "projectDescription": "Registration portal for the Coders 2029 12-Hour Frontend Hackathon with team management and admin controls.",
+  "theme": "almond",
+  "primaryColor": "#6366f1",
+  "lightColor": "#818cf8",
+  "darkColor": "#4f46e5",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart"
+            ]
+          },
+          {
+            "group": "Features",
+            "pages": [
+              "features/authentication",
+              "features/team-management",
+              "features/admin-dashboard"
+            ]
+          },
+          {
+            "group": "Development",
+            "pages": [
+              "development/setup",
+              "development/database",
+              "development/environment-variables",
+              "development/scripts"
+            ]
+          },
+          {
+            "group": "Deployment",
+            "pages": [
+              "deployment/overview",
+              "deployment/vercel"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Server Actions",
+            "pages": [
+              "api/auth-actions",
+              "api/team-actions",
+              "api/admin-actions"
+            ]
+          },
+          {
+            "group": "Database",
+            "pages": [
+              "api/schema",
+              "api/models"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Email and password authentication with JWT sessions",
+    "Team creation and management with unique join codes",
+    "Admin dashboard with registration controls and analytics",
+    "Three.js 3D hero canvas with React Three Fiber",
+    "Dark mode support via next-themes",
+    "PostgreSQL database with Prisma ORM",
+    "Form validation with React Hook Form and Zod",
+    "shadcn/ui component library with Tailwind CSS"
+  ],
+  "publicApiSurface": [
+    "signup(input) - User registration with email validation",
+    "login(input) - User authentication",
+    "logout() - User logout and session cleanup",
+    "createTeam(input) - Create a new team with join code",
+    "joinTeam(input) - Join existing team via code",
+    "leaveTeam() - Leave current team",
+    "removeMember(memberId) - Team leader removes a member",
+    "getTeamData() - Retrieve current user's team data",
+    "verifyAdminPassword(password) - Admin authentication",
+    "getAdminStats() - Retrieve dashboard statistics",
+    "getAdminTeams(search?) - Get all teams with members",
+    "getTeamlessUsers(search?) - Get users without teams",
+    "deleteTeam(teamId) - Admin deletes a team",
+    "toggleRegistration(open) - Admin toggles registration status",
+    "exportTeamsCSV() - Export teams data as CSV",
+    "exportUsersCSV() - Export users data as CSV"
+  ]
+}

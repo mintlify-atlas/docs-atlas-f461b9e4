@@ -1,0 +1,347 @@
+---
+title: Deploy to Vercel
+description: Step-by-step guide to deploying the Coders 2029 site on Vercel
+---
+
+Vercel is the recommended platform for deploying Next.js applications. This guide walks you through deploying the Coders 2029 registration portal to Vercel.
+
+## Prerequisites
+
+Before you begin:
+
+- A [Vercel account](https://vercel.com/signup)
+- Your code pushed to a Git repository (GitHub, GitLab, or Bitbucket)
+- A PostgreSQL database (Vercel Postgres, Neon, Supabase, etc.)
+
+## Deployment Steps
+
+<Steps>
+
+<Step title="Connect Your Repository">
+  
+  1. Go to [Vercel Dashboard](https://vercel.com/new)
+  2. Click **Add New** → **Project**
+  3. Import your Git repository containing the Coders 2029 site
+  4. Select the repository and click **Import**
+  
+  <Note>
+  If this is your first time, you may need to install the Vercel app on your GitHub/GitLab account and grant repository access.
+  </Note>
+
+</Step>
+
+<Step title="Configure Project Settings">
+  
+  Vercel will automatically detect Next.js. Verify these settings:
+  
+  | Setting | Value |
+  |---------|-------|
+  | **Framework Preset** | Next.js |
+  | **Root Directory** | `./` (or your source directory) |
+  | **Build Command** | `npm run build` |
+  | **Output Directory** | `.next` |
+  | **Install Command** | `npm install` |
+  
+  <Note>
+  The build command automatically runs `prisma generate && next build` as defined in `package.json`.
+  </Note>
+
+</Step>
+
+<Step title="Set Up PostgreSQL Database">
+  
+  You have several options for your production database:
+  
+  ### Option 1: Vercel Postgres (Recommended)
+  
+  1. In your Vercel project, go to the **Storage** tab
+  2. Click **Create Database** → **Postgres**
+  3. Choose your region (select closest to your users)
+  4. Click **Create**
+  
+  Vercel will automatically add the `POSTGRES_URL` environment variable to your project.
+  
+  ### Option 2: External Provider (Neon, Supabase, Railway)
+  
+  If using an external PostgreSQL provider:
+  
+  1. Create a PostgreSQL database with your provider
+  2. Copy the connection string
+  3. You'll add it as an environment variable in the next step
+
+</Step>
+
+<Step title="Configure Environment Variables">
+  
+  In the Vercel project configuration, add the required environment variable:
+  
+  1. Scroll down to **Environment Variables**
+  2. Add the following variable:
+  
+  | Name | Value |
+  |------|-------|
+  | `POSTGRES_URL` | Your PostgreSQL connection string |
+  
+  <CodeGroup>
+  
+  ```bash Vercel Postgres
+  POSTGRES_URL="postgresql://default:pass@ep-cool-darkness-123456-pooler.us-east-1.postgres.vercel-storage.com:5432/verceldb?sslmode=require"
+  ```
+  
+  ```bash Neon
+  POSTGRES_URL="postgresql://user:pass@ep-cool-darkness-123456.us-east-2.aws.neon.tech/coders2029?sslmode=require"
+  ```
+  
+  ```bash Supabase
+  POSTGRES_URL="postgresql://postgres.projectref:pass@aws-0-us-east-1.pooler.supabase.com:5432/postgres?sslmode=require"
+  ```
+  
+  </CodeGroup>
+  
+  <Warning>
+  Make sure your connection string includes `?sslmode=require` for providers that require SSL connections (Vercel Postgres, Neon, Supabase).
+  </Warning>
+  
+  <Note>
+  Environment variables are automatically available in all environments (Production, Preview, Development). You can customize per environment if needed.
+  </Note>
+
+</Step>
+
+<Step title="Deploy the Application">
+  
+  Click **Deploy** to start your first deployment.
+  
+  Vercel will:
+  1. Clone your repository
+  2. Install dependencies (`npm install`)
+  3. Run the postinstall hook (`prisma generate`)
+  4. Execute the build command (`npm run build`)
+  5. Deploy your application
+  
+  <Note>
+  The initial deployment takes 2-3 minutes. You can watch the build logs in real-time.
+  </Note>
+
+</Step>
+
+<Step title="Apply Database Migrations">
+  
+  After the first deployment, you need to apply database migrations to set up the schema.
+  
+  ### Method 1: Vercel CLI (Recommended)
+  
+  1. Install Vercel CLI:
+     ```bash
+     npm i -g vercel
+     ```
+  
+  2. Link your project:
+     ```bash
+     vercel link
+     ```
+  
+  3. Pull environment variables:
+     ```bash
+     vercel env pull
+     ```
+  
+  4. Run migrations:
+     ```bash
+     npx prisma migrate deploy
+     ```
+  
+  ### Method 2: Database Client
+  
+  Alternatively, connect to your database directly and run the SQL migrations from `prisma/migrations/`.
+  
+  <Warning>
+  Your application will not work until migrations are applied. You'll see database errors if you try to access the site before this step.
+  </Warning>
+
+</Step>
+
+<Step title="Verify Deployment">
+  
+  Once deployment completes:
+  
+  1. Vercel will provide a deployment URL (e.g., `your-project.vercel.app`)
+  2. Click the URL to visit your deployed site
+  3. Test the signup and login functionality
+  4. Verify database connectivity
+  
+  <Note>
+  Each git push to your main branch will automatically trigger a new production deployment.
+  </Note>
+
+</Step>
+
+</Steps>
+
+## Automatic Deployments
+
+Vercel automatically deploys your application when you push to Git:
+
+- **Production**: Pushes to your main/master branch
+- **Preview**: Pushes to other branches and pull requests
+
+Each deployment gets a unique URL for testing before going live.
+
+## Custom Domain
+
+To add a custom domain:
+
+<Steps>
+
+<Step title="Add Domain in Vercel">
+  1. Go to your project **Settings** → **Domains**
+  2. Enter your domain name (e.g., `coders2029.com`)
+  3. Click **Add**
+</Step>
+
+<Step title="Configure DNS">
+  Vercel will provide DNS records to add to your domain registrar:
+  
+  - **A Record**: Points to Vercel's IP address
+  - **CNAME**: For subdomains and `www`
+  
+  Add these records in your domain registrar's DNS settings.
+</Step>
+
+<Step title="Wait for Verification">
+  DNS propagation can take up to 48 hours, but usually completes within a few minutes.
+  
+  Vercel will automatically issue an SSL certificate once DNS is verified.
+</Step>
+
+</Steps>
+
+## Build Settings
+
+If you need to customize build settings:
+
+1. Go to **Project Settings** → **General**
+2. Scroll to **Build & Development Settings**
+
+### Build Command
+
+The default build command from `package.json`:
+
+```json
+"build": "prisma generate && next build"
+```
+
+This ensures:
+1. Prisma client is generated with the latest schema
+2. Next.js builds the production-optimized application
+
+### Install Command
+
+```bash
+npm install
+```
+
+The `postinstall` script automatically runs `prisma generate` after dependencies are installed.
+
+### Node.js Version
+
+Vercel automatically detects Node.js 20.x (compatible with Node 18+ requirement). To specify a version, add to `package.json`:
+
+```json
+"engines": {
+  "node": ">=18"
+}
+```
+
+## Environment Variables Management
+
+To update environment variables after deployment:
+
+1. Go to **Project Settings** → **Environment Variables**
+2. Edit or add new variables
+3. Redeploy for changes to take effect
+
+<Note>
+Changes to environment variables don't automatically redeploy. You need to trigger a new deployment by pushing to Git or using the Vercel dashboard.
+</Note>
+
+## Monitoring and Logs
+
+Vercel provides built-in monitoring:
+
+- **Deployments**: View all deployment history and logs
+- **Functions**: Monitor API route performance
+- **Analytics**: Track page views and Web Vitals (paid feature)
+
+Access logs from:
+- **Dashboard** → **Deployments** → Select a deployment → **View Logs**
+
+## Database Connection Pooling
+
+For optimal database performance with serverless functions:
+
+<Note>
+Vercel Postgres includes built-in connection pooling. If using an external provider, consider:
+- **Neon**: Automatically provides pooled connections
+- **Supabase**: Use the "connection pooling" connection string
+- **PgBouncer**: Set up connection pooling for self-hosted databases
+</Note>
+
+The application uses `@prisma/adapter-pg` with native PostgreSQL driver which works well with connection pooling.
+
+## Troubleshooting
+
+### Build Fails with Prisma Error
+
+**Issue**: Build fails with "Cannot find module '@prisma/client'"
+
+**Solution**: Ensure `postinstall` script is in `package.json`:
+```json
+"postinstall": "prisma generate"
+```
+
+### Database Connection Errors
+
+**Issue**: "Can't reach database server" or connection timeout
+
+**Solutions**:
+- Verify `POSTGRES_URL` is correctly set in environment variables
+- Check if your database requires `?sslmode=require` in the connection string
+- Ensure your database provider allows connections from Vercel's IP ranges
+- For Neon: Use the pooled connection string, not the direct connection
+
+### Migrations Not Applied
+
+**Issue**: Application shows "Table doesn't exist" errors
+
+**Solution**: Run migrations using Vercel CLI:
+```bash
+vercel env pull
+npx prisma migrate deploy
+```
+
+### Function Timeout
+
+**Issue**: API routes timeout on Vercel
+
+**Solution**: 
+- Verify database connection is fast and stable
+- Consider using a database in the same region as your Vercel deployment
+- Check for slow queries using Prisma Studio or your database provider's monitoring
+
+## Additional Resources
+
+- [Vercel Next.js Documentation](https://vercel.com/docs/frameworks/nextjs)
+- [Vercel Postgres Documentation](https://vercel.com/docs/storage/vercel-postgres)
+- [Next.js Deployment Guide](https://nextjs.org/docs/app/building-your-application/deploying)
+- [Prisma Deploy Documentation](https://www.prisma.io/docs/guides/deployment)
+
+## Next Steps
+
+After successful deployment:
+
+- Set up your custom domain
+- Configure admin access for the dashboard
+- Test the complete registration flow
+- Monitor application performance
+- Set up error tracking (Sentry, LogRocket, etc.)

@@ -1,0 +1,918 @@
+---
+title: "Admin Actions"
+description: "Server actions for admin dashboard including authentication, statistics, team management, and data export"
+---
+
+## Overview
+
+Admin server actions provide administrative functionality for the hackathon site including authentication, statistics, team management, and CSV exports. All actions are defined in `~/workspace/source/lib/admin-actions.ts`.
+
+**Authentication**: Most admin actions check authentication using `isAdminAuthenticated()` before execution.
+
+## Types
+
+### BranchCount
+
+```typescript
+type BranchCount = { 
+  branch: string; 
+  count: number 
+};
+```
+
+### TeamSizeBucket
+
+```typescript
+type TeamSizeBucket = { 
+  size: number; 
+  count: number 
+};
+```
+
+### AdminStats
+
+```typescript
+type AdminStats = {
+  totalTeams: number;
+  totalUsers: number;
+  usersWithTeam: number;
+  usersWithoutTeam: number;
+  branchBreakdown: BranchCount[];
+  teamSizeDistribution: TeamSizeBucket[];
+  registrationOpen: boolean;
+};
+```
+
+### AdminTeamMember
+
+```typescript
+type AdminTeamMember = {
+  id: string;
+  name: string;
+  email: string;
+  rollNumber: string;
+  githubUrl: string;
+  branch: string;
+  isLead: boolean;
+  createdAt: string; // ISO 8601 format
+};
+```
+
+### AdminTeam
+
+```typescript
+type AdminTeam = {
+  id: string;
+  teamName: string;
+  joinCode: string;
+  createdAt: string; // ISO 8601 format
+  members: AdminTeamMember[];
+};
+```
+
+### TeamlessUser
+
+```typescript
+type TeamlessUser = {
+  id: string;
+  name: string;
+  email: string;
+  rollNumber: string;
+  githubUrl: string;
+  branch: string;
+  createdAt: string; // ISO 8601 format
+};
+```
+
+### ActivityEntry
+
+```typescript
+type ActivityEntry = {
+  type: "user_registered" | "team_created";
+  name: string;
+  timestamp: string; // ISO 8601 format
+  details: string;
+};
+```
+
+---
+
+## Authentication
+
+### verifyAdminPassword()
+
+Verifies admin password and creates authenticated session.
+
+#### Signature
+
+```typescript
+async function verifyAdminPassword(
+  password: string
+): Promise<{ success: boolean; error?: string }>
+```
+
+#### Parameters
+
+<ParamField path="password" type="string" required>
+  Admin password to verify against `ADMIN_PASSWORD` environment variable
+</ParamField>
+
+#### Returns
+
+<ResponseField name="success" type="boolean" required>
+  Whether authentication was successful
+</ResponseField>
+
+<ResponseField name="error" type="string">
+  Error message if authentication failed
+</ResponseField>
+
+#### Error Messages
+
+- `"Admin password not configured."` - `ADMIN_PASSWORD` environment variable not set
+- `"Incorrect password."` - Password doesn't match
+
+#### Behavior
+
+1. Checks if `ADMIN_PASSWORD` environment variable exists
+2. Compares input password with environment variable (plain text comparison)
+3. If successful, sets HTTP-only cookie `admin_session` with value `"authenticated"`
+4. Cookie expires after 4 hours
+
+#### Cookie Configuration
+
+- **Name**: `admin_session`
+- **Value**: `"authenticated"`
+- **Max Age**: 14,400 seconds (4 hours)
+- **HTTP Only**: `true`
+- **Secure**: `true` in production
+- **SameSite**: `"lax"`
+- **Path**: `/`
+
+#### Usage Example
+
+```typescript
+import { verifyAdminPassword } from "@/lib/admin-actions";
+
+export async function loginAdmin(formData: FormData) {
+  const password = formData.get("password") as string;
+  const result = await verifyAdminPassword(password);
+  
+  if (!result.success) {
+    return { error: result.error };
+  }
+  
+  // Redirect to admin dashboard
+  redirect("/admin");
+}
+```
+
+---
+
+### isAdminAuthenticated()
+
+Checks if the current request has a valid admin session.
+
+#### Signature
+
+```typescript
+async function isAdminAuthenticated(): Promise<boolean>
+```
+
+#### Parameters
+
+None. Reads from cookies.
+
+#### Returns
+
+<ResponseField name="authenticated" type="boolean">
+  `true` if `admin_session` cookie exists with value `"authenticated"`, otherwise `false`
+</ResponseField>
+
+#### Usage Example
+
+```typescript
+import { isAdminAuthenticated } from "@/lib/admin-actions";
+import { redirect } from "next/navigation";
+
+export default async function AdminPage() {
+  const isAdmin = await isAdminAuthenticated();
+  
+  if (!isAdmin) {
+    redirect("/admin/login");
+  }
+  
+  return <div>Admin Dashboard</div>;
+}
+```
+
+---
+
+### logoutAdmin()
+
+Logs out the admin by deleting the session cookie.
+
+#### Signature
+
+```typescript
+async function logoutAdmin(): Promise<void>
+```
+
+#### Parameters
+
+None.
+
+#### Returns
+
+Void.
+
+#### Behavior
+
+Deletes the `admin_session` cookie.
+
+#### Usage Example
+
+```typescript
+import { logoutAdmin } from "@/lib/admin-actions";
+
+export function LogoutButton() {
+  return (
+    <form action={logoutAdmin}>
+      <button type="submit">Logout</button>
+    </form>
+  );
+}
+```
+
+---
+
+## Statistics
+
+### getAdminStats()
+
+Retrieves comprehensive statistics about users and teams.
+
+#### Signature
+
+```typescript
+async function getAdminStats(): Promise<AdminStats>
+```
+
+#### Parameters
+
+None.
+
+#### Returns
+
+<ResponseField name="AdminStats" type="object">
+  Comprehensive site statistics
+  
+  <Expandable title="properties">
+    <ResponseField name="totalTeams" type="number">
+      Total number of teams
+    </ResponseField>
+    
+    <ResponseField name="totalUsers" type="number">
+      Total number of registered users
+    </ResponseField>
+    
+    <ResponseField name="usersWithTeam" type="number">
+      Number of users assigned to a team
+    </ResponseField>
+    
+    <ResponseField name="usersWithoutTeam" type="number">
+      Number of users without a team
+    </ResponseField>
+    
+    <ResponseField name="branchBreakdown" type="BranchCount[]">
+      Count of users per academic branch (CE, CSE, EXTC)
+    </ResponseField>
+    
+    <ResponseField name="teamSizeDistribution" type="TeamSizeBucket[]">
+      Distribution of teams by member count, sorted by size ascending
+    </ResponseField>
+    
+    <ResponseField name="registrationOpen" type="boolean">
+      Whether registration is currently open (defaults to `true` if not set)
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+#### Behavior
+
+Executes multiple database queries in parallel using `Promise.all()`:
+- Counts total teams
+- Counts total users
+- Counts users with teams
+- Groups users by branch
+- Fetches all teams with member counts
+- Fetches site settings
+
+#### Usage Example
+
+```typescript
+import { getAdminStats } from "@/lib/admin-actions";
+
+export default async function StatsPage() {
+  const stats = await getAdminStats();
+  
+  return (
+    <div>
+      <h1>Site Statistics</h1>
+      <p>Total Teams: {stats.totalTeams}</p>
+      <p>Total Users: {stats.totalUsers}</p>
+      <p>Users with Team: {stats.usersWithTeam}</p>
+      <p>Users without Team: {stats.usersWithoutTeam}</p>
+      
+      <h2>Branch Breakdown</h2>
+      <ul>
+        {stats.branchBreakdown.map(b => (
+          <li key={b.branch}>{b.branch}: {b.count}</li>
+        ))}
+      </ul>
+      
+      <h2>Team Size Distribution</h2>
+      <ul>
+        {stats.teamSizeDistribution.map(t => (
+          <li key={t.size}>
+            {t.size} members: {t.count} teams
+          </li>
+        ))}
+      </ul>
+      
+      <p>Registration: {stats.registrationOpen ? "Open" : "Closed"}</p>
+    </div>
+  );
+}
+```
+
+---
+
+## Team Management
+
+### getAdminTeams()
+
+Retrieves all teams with their members, optionally filtered by search term.
+
+#### Signature
+
+```typescript
+async function getAdminTeams(search?: string): Promise<AdminTeam[]>
+```
+
+#### Parameters
+
+<ParamField path="search" type="string">
+  Optional search term to filter teams by:
+  - Team name (case-insensitive)
+  - Member name (case-insensitive)
+  - Member email (case-insensitive)
+</ParamField>
+
+#### Returns
+
+<ResponseField name="teams" type="AdminTeam[]">
+  Array of teams ordered by creation date (newest first)
+  
+  Each team includes:
+  - Team information (id, name, join code, creation date)
+  - Array of members ordered by role (leaders first)
+  - All dates in ISO 8601 format
+</ResponseField>
+
+#### Behavior
+
+1. Builds search filter if provided (searches team name, member name, member email)
+2. Fetches teams with all member details
+3. Orders teams by `createdAt` descending (newest first)
+4. Orders members within each team by `isLead` descending (leaders first)
+5. Converts all Date objects to ISO 8601 strings
+
+#### Usage Example
+
+<CodeGroup>
+```typescript Server Component
+import { getAdminTeams } from "@/lib/admin-actions";
+
+export default async function TeamsPage({
+  searchParams,
+}: {
+  searchParams: { q?: string };
+}) {
+  const teams = await getAdminTeams(searchParams.q);
+  
+  return (
+    <div>
+      <h1>All Teams ({teams.length})</h1>
+      {teams.map(team => (
+        <div key={team.id}>
+          <h2>{team.teamName}</h2>
+          <p>Join Code: {team.joinCode}</p>
+          <p>Created: {new Date(team.createdAt).toLocaleDateString()}</p>
+          <ul>
+            {team.members.map(member => (
+              <li key={member.id}>
+                {member.name} ({member.branch}) {member.isLead && "👑"}
+                <br />
+                {member.email} | {member.rollNumber}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+    </div>
+  );
+}
+```
+
+```typescript With Search
+import { getAdminTeams } from "@/lib/admin-actions";
+
+export async function searchTeams(query: string) {
+  const results = await getAdminTeams(query);
+  return results;
+}
+```
+</CodeGroup>
+
+---
+
+### getTeamlessUsers()
+
+Retrieves all users who are not currently in a team.
+
+#### Signature
+
+```typescript
+async function getTeamlessUsers(search?: string): Promise<TeamlessUser[]>
+```
+
+#### Parameters
+
+<ParamField path="search" type="string">
+  Optional search term to filter users by:
+  - Name (case-insensitive)
+  - Email (case-insensitive)
+  - Roll number (case-insensitive)
+</ParamField>
+
+#### Returns
+
+<ResponseField name="users" type="TeamlessUser[]">
+  Array of users without teams, ordered by registration date (newest first)
+</ResponseField>
+
+#### Usage Example
+
+```typescript
+import { getTeamlessUsers } from "@/lib/admin-actions";
+
+export default async function TeamlessPage() {
+  const users = await getTeamlessUsers();
+  
+  return (
+    <div>
+      <h1>Users Without Teams ({users.length})</h1>
+      <ul>
+        {users.map(user => (
+          <li key={user.id}>
+            {user.name} ({user.branch})
+            <br />
+            {user.email} | {user.rollNumber}
+            <br />
+            <a href={user.githubUrl} target="_blank">GitHub</a>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+```
+
+---
+
+### deleteTeam()
+
+Deletes a team and removes all members from it.
+
+#### Signature
+
+```typescript
+async function deleteTeam(
+  teamId: string
+): Promise<{ success: boolean; error?: string }>
+```
+
+#### Parameters
+
+<ParamField path="teamId" type="string" required>
+  Unique identifier of the team to delete
+</ParamField>
+
+#### Returns
+
+<ResponseField name="success" type="boolean" required>
+  Whether deletion was successful
+</ResponseField>
+
+<ResponseField name="error" type="string">
+  Error message if deletion failed
+</ResponseField>
+
+#### Error Messages
+
+- `"Unauthorized."` - Admin not authenticated
+- `"Failed to delete team."` - Database operation failed
+
+#### Behavior
+
+1. Verifies admin authentication
+2. Removes all members from team (sets `teamId: null`, `isLead: false`)
+3. Deletes team from database
+4. Returns success or error
+
+#### Authorization
+
+**Required**: Admin must be authenticated via `isAdminAuthenticated()`
+
+#### Usage Example
+
+```typescript
+import { deleteTeam } from "@/lib/admin-actions";
+import { revalidatePath } from "next/cache";
+
+export async function handleDeleteTeam(teamId: string) {
+  const result = await deleteTeam(teamId);
+  
+  if (!result.success) {
+    return { error: result.error };
+  }
+  
+  revalidatePath("/admin/teams");
+  return { success: true };
+}
+```
+
+---
+
+### toggleRegistration()
+
+Enables or disables user registration.
+
+#### Signature
+
+```typescript
+async function toggleRegistration(
+  open: boolean
+): Promise<{ success: boolean; error?: string }>
+```
+
+#### Parameters
+
+<ParamField path="open" type="boolean" required>
+  Whether registration should be open (`true`) or closed (`false`)
+</ParamField>
+
+#### Returns
+
+<ResponseField name="success" type="boolean" required>
+  Whether the operation was successful
+</ResponseField>
+
+<ResponseField name="error" type="string">
+  Error message if operation failed
+</ResponseField>
+
+#### Error Messages
+
+- `"Unauthorized."` - Admin not authenticated
+
+#### Behavior
+
+1. Verifies admin authentication
+2. Upserts `siteSettings` record with `id: "singleton"`
+3. Sets `registrationOpen` field to provided value
+4. Creates record if it doesn't exist
+
+#### Database
+
+Uses upsert pattern on `siteSettings` table with singleton pattern (`id: "singleton"`).
+
+#### Authorization
+
+**Required**: Admin must be authenticated via `isAdminAuthenticated()`
+
+#### Usage Example
+
+```typescript
+import { toggleRegistration } from "@/lib/admin-actions";
+import { revalidatePath } from "next/cache";
+
+export async function handleToggleRegistration(open: boolean) {
+  const result = await toggleRegistration(open);
+  
+  if (!result.success) {
+    return { error: result.error };
+  }
+  
+  revalidatePath("/admin");
+  revalidatePath("/signup");
+  return { success: true };
+}
+```
+
+---
+
+## Activity Tracking
+
+### getActivityLog()
+
+Retrieves recent user registrations and team creations.
+
+#### Signature
+
+```typescript
+async function getActivityLog(): Promise<ActivityEntry[]>
+```
+
+#### Parameters
+
+None.
+
+#### Returns
+
+<ResponseField name="activities" type="ActivityEntry[]">
+  Array of recent activities (max 30), sorted by timestamp descending
+  
+  Each entry contains:
+  - **type**: `"user_registered"` or `"team_created"`
+  - **name**: User name or team name
+  - **timestamp**: ISO 8601 format
+  - **details**: Additional information (branch/email for users, "Team created" for teams)
+</ResponseField>
+
+#### Behavior
+
+1. Fetches 20 most recent users (by `createdAt`)
+2. Fetches 20 most recent teams (by `createdAt`)
+3. Combines and formats as activity entries
+4. Sorts by timestamp descending
+5. Returns top 30 entries
+
+#### Usage Example
+
+```typescript
+import { getActivityLog } from "@/lib/admin-actions";
+
+export default async function ActivityPage() {
+  const activities = await getActivityLog();
+  
+  return (
+    <div>
+      <h1>Recent Activity</h1>
+      <ul>
+        {activities.map((activity, i) => (
+          <li key={i}>
+            <strong>{activity.name}</strong>
+            {" "}
+            {activity.type === "user_registered" 
+              ? "registered" 
+              : "created team"}
+            <br />
+            {activity.details}
+            <br />
+            <small>{new Date(activity.timestamp).toLocaleString()}</small>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+```
+
+---
+
+## Data Export
+
+### exportTeamsCSV()
+
+Exports all teams and their members as CSV format.
+
+#### Signature
+
+```typescript
+async function exportTeamsCSV(): Promise<string>
+```
+
+#### Parameters
+
+None.
+
+#### Returns
+
+<ResponseField name="csv" type="string">
+  CSV formatted string with headers and data, or empty string if not authenticated
+</ResponseField>
+
+#### CSV Format
+
+**Headers**: Team Name, Join Code, Member Name, Email, Roll Number, GitHub, Branch, Role
+
+**One row per team member** (teams with multiple members have multiple rows)
+
+#### Authorization
+
+**Required**: Admin must be authenticated. Returns empty string if not authenticated.
+
+#### Behavior
+
+1. Verifies admin authentication
+2. Fetches all teams with members ordered by creation date
+3. Generates CSV with one row per team member
+4. Quotes team names and member names to handle commas
+5. Role field shows "Leader" or "Member"
+
+#### Usage Example
+
+<CodeGroup>
+```typescript Server Action
+import { exportTeamsCSV } from "@/lib/admin-actions";
+
+export async function downloadTeamsCSV() {
+  const csv = await exportTeamsCSV();
+  
+  if (!csv) {
+    return { error: "Unauthorized" };
+  }
+  
+  return { csv };
+}
+```
+
+```typescript Client Component
+"use client";
+
+import { exportTeamsCSV } from "@/lib/admin-actions";
+
+export function ExportTeamsButton() {
+  async function handleExport() {
+    const csv = await exportTeamsCSV();
+    
+    if (!csv) {
+      alert("Failed to export");
+      return;
+    }
+    
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `teams-${new Date().toISOString()}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+  
+  return (
+    <button onClick={handleExport}>Export Teams CSV</button>
+  );
+}
+```
+</CodeGroup>
+
+---
+
+### exportUsersCSV()
+
+Exports all users with their team information as CSV format.
+
+#### Signature
+
+```typescript
+async function exportUsersCSV(): Promise<string>
+```
+
+#### Parameters
+
+None.
+
+#### Returns
+
+<ResponseField name="csv" type="string">
+  CSV formatted string with headers and data, or empty string if not authenticated
+</ResponseField>
+
+#### CSV Format
+
+**Headers**: Name, Email, Roll Number, GitHub, Branch, Team, Role, Registered At
+
+**One row per user**
+
+#### Authorization
+
+**Required**: Admin must be authenticated. Returns empty string if not authenticated.
+
+#### Behavior
+
+1. Verifies admin authentication
+2. Fetches all users with team information ordered by creation date
+3. Generates CSV with one row per user
+4. Quotes names and team names to handle commas
+5. Shows "No Team" for users without teams
+6. Includes ISO 8601 registration timestamp
+
+#### Usage Example
+
+<CodeGroup>
+```typescript Server Action
+import { exportUsersCSV } from "@/lib/admin-actions";
+
+export async function downloadUsersCSV() {
+  const csv = await exportUsersCSV();
+  
+  if (!csv) {
+    return { error: "Unauthorized" };
+  }
+  
+  return { csv };
+}
+```
+
+```typescript Client Component
+"use client";
+
+import { exportUsersCSV } from "@/lib/admin-actions";
+
+export function ExportUsersButton() {
+  async function handleExport() {
+    const csv = await exportUsersCSV();
+    
+    if (!csv) {
+      alert("Failed to export");
+      return;
+    }
+    
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `users-${new Date().toISOString()}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+  
+  return (
+    <button onClick={handleExport}>Export Users CSV</button>
+  );
+}
+```
+</CodeGroup>
+
+---
+
+## Public Functions
+
+### isRegistrationOpen()
+
+Checks if registration is currently open (public function, no authentication required).
+
+#### Signature
+
+```typescript
+async function isRegistrationOpen(): Promise<boolean>
+```
+
+#### Parameters
+
+None.
+
+#### Returns
+
+<ResponseField name="open" type="boolean">
+  `true` if registration is open, `false` if closed. Defaults to `true` if not configured.
+</ResponseField>
+
+#### Behavior
+
+Reads `registrationOpen` field from `siteSettings` table. Returns `true` if record doesn't exist.
+
+#### Usage Example
+
+```typescript
+import { isRegistrationOpen } from "@/lib/admin-actions";
+import { redirect } from "next/navigation";
+
+export default async function SignupPage() {
+  const canRegister = await isRegistrationOpen();
+  
+  if (!canRegister) {
+    return (
+      <div>
+        <h1>Registration Closed</h1>
+        <p>Registration is currently not accepting new signups.</p>
+      </div>
+    );
+  }
+  
+  return <SignupForm />;
+}
+```

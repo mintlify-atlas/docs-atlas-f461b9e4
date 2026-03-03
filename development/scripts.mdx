@@ -1,0 +1,475 @@
+---
+title: 'NPM Scripts'
+description: 'Available npm scripts for development, building, and database management'
+---
+
+The Coders 2029 Hackathon Site includes a comprehensive set of npm scripts for development, building, testing, and database management.
+
+## Development
+
+### dev
+
+Start the Next.js development server with Turbopack.
+
+```bash
+npm run dev
+```
+
+**What it does:**
+- Starts development server on [http://localhost:3000](http://localhost:3000)
+- Enables Turbopack for faster hot module replacement (HMR)
+- Watches for file changes and auto-reloads
+- Provides detailed error messages and stack traces
+
+**Options:**
+```bash
+# Run on a different port
+PORT=3001 npm run dev
+
+# Run with turbo (default in Next.js 15+)
+npm run dev -- --turbo
+```
+
+<Note>
+  The development server uses Turbopack by default in Next.js 16 for significantly faster builds and hot reloading.
+</Note>
+
+---
+
+## Building
+
+### build
+
+Create an optimized production build.
+
+```bash
+npm run build
+```
+
+**What it does:**
+1. Runs `prisma generate` to create the Prisma Client
+2. Builds the Next.js application for production
+3. Optimizes assets, code splitting, and tree shaking
+4. Generates static pages where possible
+5. Creates output in `.next/` directory
+
+**Output:**
+```bash
+ Route (app)                              Size     First Load JS
+ ┌ ○ /                                     5.2 kB         120 kB
+ ├ ○ /admin                                3.8 kB         118 kB
+ ├ ○ /login                                4.1 kB         119 kB
+ └ ○ /signup                               4.5 kB         119 kB
+```
+
+<Warning>
+  Always run `npm run build` before deploying to production to ensure there are no build errors.
+</Warning>
+
+---
+
+### start
+
+Start the production server after building.
+
+```bash
+npm start
+```
+
+**What it does:**
+- Starts the Next.js production server
+- Serves the optimized build from `.next/`
+- Runs on [http://localhost:3000](http://localhost:3000)
+
+**Usage:**
+```bash
+# First build
+npm run build
+
+# Then start production server
+npm start
+```
+
+**Options:**
+```bash
+# Custom port
+PORT=8080 npm start
+
+# Custom hostname
+HOSTNAME=0.0.0.0 PORT=8080 npm start
+```
+
+<Note>
+  The production server does not include hot reloading. Use `npm run dev` for development.
+</Note>
+
+---
+
+## Code Quality
+
+### lint
+
+Run Biome linter to check code quality.
+
+```bash
+npm run lint
+```
+
+**What it does:**
+- Checks all TypeScript/JavaScript files for issues
+- Reports code style violations
+- Identifies potential bugs and anti-patterns
+- Enforces consistent code formatting rules
+
+**Configuration:**  
+Biome settings are defined in `biome.json` in the project root.
+
+**Example output:**
+```bash
+✔ No lint errors found
+```
+
+**With errors:**
+```bash
+❌ Found 3 errors:
+
+  src/app/page.tsx:12:5
+    ⚠ Missing semicolon
+  
+  src/components/Navbar.tsx:45:3
+    ⚠ Unused variable: handleClick
+```
+
+<Accordion title="What is Biome?">
+  [Biome](https://biomejs.dev) is a fast, all-in-one toolchain for web development that replaces ESLint and Prettier. It provides linting and formatting with zero configuration.
+</Accordion>
+
+---
+
+### format
+
+Auto-format code with Biome.
+
+```bash
+npm run format
+```
+
+**What it does:**
+- Automatically formats all TypeScript/JavaScript files
+- Applies consistent code style
+- Fixes formatting issues (indentation, quotes, semicolons, etc.)
+- Writes changes directly to files
+
+**Example:**
+```bash
+$ npm run format
+
+Formatted 42 files in 127ms
+```
+
+<Note>
+  Run `npm run format` before committing code to ensure consistent formatting across the team.
+</Note>
+
+---
+
+## Database Management
+
+### db:migrate
+
+Create and apply database migrations.
+
+```bash
+npm run db:migrate
+```
+
+**What it does:**
+1. Compares your Prisma schema with the current database
+2. Generates SQL migration files if changes detected
+3. Prompts for a migration name
+4. Applies the migration to your database
+5. Regenerates the Prisma Client
+
+**Interactive prompt:**
+```bash
+$ npm run db:migrate
+
+✔ Name of migration: add_github_field
+
+Prisma Migrate created and applied the following migration:
+
+migrations/
+  └─ 20240115_add_github_field/
+      └─ migration.sql
+```
+
+**Generated migration file:**
+```sql
+-- AlterTable
+ALTER TABLE "users" ADD COLUMN "github_url" TEXT NOT NULL;
+```
+
+<Warning>
+  Always review generated migration files before applying them to production.
+</Warning>
+
+---
+
+### db:push
+
+Push schema changes without creating migration files.
+
+```bash
+npm run db:push
+```
+
+**What it does:**
+- Syncs your Prisma schema directly to the database
+- Does NOT create migration files
+- Useful for rapid prototyping
+- Regenerates Prisma Client
+
+**When to use:**
+- Early development and experimentation
+- Local development with throwaway data
+- Schema prototyping
+
+**When NOT to use:**
+- Production environments
+- Shared development databases
+- When you need migration history
+
+<Warning>
+  `db:push` is destructive and may cause data loss. Always use `db:migrate` for production changes.
+</Warning>
+
+<Accordion title="db:push vs db:migrate">
+  **db:push:**
+  - Fast prototyping
+  - No migration files
+  - Direct schema sync
+  - May lose data
+
+  **db:migrate:**
+  - Production-safe
+  - Creates migration history
+  - Version controlled
+  - Reversible
+
+  Use `db:push` for development, `db:migrate` for production.
+</Accordion>
+
+---
+
+### db:studio
+
+Open Prisma Studio, a visual database browser.
+
+```bash
+npm run db:studio
+```
+
+**What it does:**
+- Launches Prisma Studio at [http://localhost:5555](http://localhost:5555)
+- Provides a web GUI for your database
+- Allows visual data browsing and editing
+
+**Features:**
+- View all tables and records
+- Filter and search data
+- Create, update, and delete records
+- Navigate relationships between models
+- Real-time data updates
+
+<Note>
+  Prisma Studio is great for development but should not be used in production. Use it to inspect and debug data during development.
+</Note>
+
+---
+
+### db:seed
+
+Seed the database with initial or test data.
+
+```bash
+npm run db:seed
+```
+
+**What it does:**
+- Runs the seed script defined in `package.json`
+- Typically executes `prisma/seed.ts`
+- Populates the database with sample data
+
+**Configuration in package.json:**
+```json
+{
+  "prisma": {
+    "seed": "ts-node --compiler-options {\"module\":\"CommonJS\"} prisma/seed.ts"
+  }
+}
+```
+
+**Example seed script:**
+```typescript
+import { PrismaClient } from '@prisma/client';
+const prisma = new PrismaClient();
+
+async function main() {
+  // Create sample users
+  await prisma.user.createMany({
+    data: [
+      {
+        name: "Alice",
+        email: "alice@example.com",
+        rollNumber: "2023001",
+        branch: "CSE",
+        // ...
+      },
+    ],
+  });
+
+  // Create sample teams
+  await prisma.team.create({
+    data: {
+      teamName: "Team Alpha",
+      joinCode: "ABC123",
+    },
+  });
+}
+
+main()
+  .catch(console.error)
+  .finally(() => prisma.$disconnect());
+```
+
+<Accordion title="When to use seeding">
+  - Setting up development environment
+  - Creating test data for demos
+  - Initializing production with required data (e.g., `SiteSettings`)
+  - Automated testing scenarios
+</Accordion>
+
+---
+
+## Utility Scripts
+
+### postinstall
+
+Automatically runs after `npm install`.
+
+```bash
+# Runs automatically, but can be invoked manually
+npm run postinstall
+```
+
+**What it does:**
+- Runs `prisma generate` to create the Prisma Client
+- Ensures type definitions are up-to-date
+- Required after schema changes or initial install
+
+**Defined in package.json:**
+```json
+{
+  "scripts": {
+    "postinstall": "prisma generate"
+  }
+}
+```
+
+<Note>
+  You typically don't need to run this manually. It executes automatically during `npm install`.
+</Note>
+
+---
+
+## Common Workflows
+
+### Starting Fresh Development
+
+```bash
+# Clone and setup
+git clone <repo-url>
+cd coders2029-site
+npm install
+
+# Configure environment
+cp .env.example .env
+# Edit .env with your settings
+
+# Setup database
+npm run db:migrate
+npm run db:seed
+
+# Start development
+npm run dev
+```
+
+### Making Schema Changes
+
+```bash
+# 1. Edit prisma/schema.prisma
+# 2. Create and apply migration
+npm run db:migrate
+
+# 3. Verify in Prisma Studio
+npm run db:studio
+```
+
+### Pre-Commit Checklist
+
+```bash
+# Format code
+npm run format
+
+# Check for lint errors
+npm run lint
+
+# Ensure build works
+npm run build
+
+# Commit changes
+git add .
+git commit -m "Your message"
+```
+
+### Production Deployment
+
+```bash
+# 1. Build locally to test
+npm run build
+
+# 2. Test production build
+npm start
+
+# 3. Deploy (platform-specific)
+# Vercel, Railway, etc. will run `npm run build` automatically
+```
+
+---
+
+## Quick Reference
+
+| Command              | Description                               | When to Use            |
+| -------------------- | ----------------------------------------- | ---------------------- |
+| `npm run dev`        | Start dev server with hot reload          | Daily development      |
+| `npm run build`      | Create production build                   | Before deployment      |
+| `npm start`          | Run production server                     | Local production test  |
+| `npm run lint`       | Check code for issues                     | Before committing      |
+| `npm run format`     | Auto-format code                          | Before committing      |
+| `npm run db:migrate` | Create and apply migrations               | After schema changes   |
+| `npm run db:push`    | Quick schema sync (no migrations)         | Rapid prototyping      |
+| `npm run db:studio`  | Open visual database browser              | Inspecting data        |
+| `npm run db:seed`    | Populate database with sample data        | Fresh setup            |
+
+---
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Development Setup" icon="code" href="/development/setup">
+    Complete guide to setting up your local environment
+  </Card>
+  <Card title="Database Guide" icon="database" href="/development/database">
+    Learn more about Prisma ORM and database management
+  </Card>
+</CardGroup>

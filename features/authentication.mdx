@@ -1,0 +1,271 @@
+---
+title: 'Authentication'
+description: 'User signup, login, and session management for the hackathon platform'
+icon: 'shield-check'
+---
+
+## Overview
+
+The hackathon platform uses a secure authentication system with JWT-based sessions, bcrypt password hashing, and strict email validation rules to ensure only eligible participants can register.
+
+## User Registration
+
+### Registration Status
+
+Before users can sign up, registration must be enabled by an administrator. If registration is closed, users will see an error message: "Registration is currently closed."
+
+<Note>
+Administrators can toggle registration on/off from the admin dashboard to control when participants can sign up.
+</Note>
+
+### Signup Flow
+
+<Steps>
+  <Step title="Navigate to Signup Page">
+    Users access the registration form to create their hackathon account.
+  </Step>
+  
+  <Step title="Fill Required Information">
+    Complete all required fields with valid information according to the validation rules below.
+  </Step>
+  
+  <Step title="Submit Registration">
+    Upon successful validation, the account is created and the user is automatically logged in.
+  </Step>
+  
+  <Step title="Redirect to Dashboard">
+    After registration, users are redirected to the main dashboard where they can create or join a team.
+  </Step>
+</Steps>
+
+### Validation Rules
+
+The signup form enforces strict validation to ensure data quality and participant eligibility:
+
+<Accordion title="Name Validation">
+  - **Minimum length:** 2 characters
+  - **Error message:** "Name must be at least 2 characters"
+</Accordion>
+
+<Accordion title="Email Validation">
+  - **Format required:** `name.lastname25@spit.ac.in`
+  - **Pattern:** Must match lowercase letters, followed by a dot, more lowercase letters, then "25@spit.ac.in"
+  - **Case handling:** Email is converted to lowercase before validation
+  - **Error messages:**
+    - Invalid format: "Enter a valid email"
+    - Wrong domain/pattern: "Email must be in the format name.lastname25@spit.ac.in"
+  
+  <Note>
+  Only SPIT institution emails with the specific 2025 cohort pattern are accepted.
+  </Note>
+</Accordion>
+
+<Accordion title="Roll Number Validation">
+  - **Format:** 10 digits starting with "2025"
+  - **Pattern:** `2025XXXXXX` (where X is any digit)
+  - **Example:** 2025123456
+  - **Error message:** "Roll number must be 10 digits and start with 2025"
+  - **Uniqueness:** Each roll number can only be registered once
+</Accordion>
+
+<Accordion title="GitHub URL Validation">
+  - **Format:** Valid GitHub profile URL
+  - **Accepted patterns:**
+    - `https://github.com/username`
+    - `http://github.com/username`
+    - `https://www.github.com/username`
+  - **Error messages:**
+    - Invalid URL: "Enter a valid URL"
+    - Invalid GitHub format: "Must be a valid GitHub profile URL (github.com/\<username\>)"
+</Accordion>
+
+<Accordion title="Branch Selection">
+  - **Options:** CE, CSE, EXTC
+  - **Type:** Dropdown selection (no free-form input)
+</Accordion>
+
+<Accordion title="Password Requirements">
+  - **Minimum length:** 6 characters
+  - **Confirmation:** Must match the "Confirm Password" field
+  - **Error messages:**
+    - Too short: "Password must be at least 6 characters"
+    - Mismatch: "Passwords don't match"
+</Accordion>
+
+### Duplicate Prevention
+
+The system checks for existing accounts before creating new ones:
+
+- **Email uniqueness:** Each email can only be used once
+  - Error: "An account with this email already exists."
+- **Roll number uniqueness:** Each roll number can only be registered once
+  - Error: "This roll number is already registered."
+
+## Login Flow
+
+<Steps>
+  <Step title="Navigate to Login Page">
+    Users access the login form with their registered credentials.
+  </Step>
+  
+  <Step title="Enter Credentials">
+    Provide the email address and password used during registration.
+  </Step>
+  
+  <Step title="Authentication">
+    The system verifies the email exists and the password matches using secure bcrypt comparison.
+  </Step>
+  
+  <Step title="Session Creation">
+    Upon successful authentication, a JWT session is created and stored in a secure cookie.
+  </Step>
+  
+  <Step title="Redirect to Dashboard">
+    Users are redirected to the main dashboard to access their team and hackathon features.
+  </Step>
+</Steps>
+
+### Login Validation
+
+<Accordion title="Email">
+  - Must be a valid email format
+  - Error: "Enter a valid email"
+</Accordion>
+
+<Accordion title="Password">
+  - Cannot be empty
+  - Error: "Password is required"
+</Accordion>
+
+<Warning>
+For security reasons, the system returns a generic error message for invalid credentials: "Invalid email or password." This prevents attackers from determining which accounts exist in the system.
+</Warning>
+
+## Session Management
+
+### JWT Sessions
+
+The platform uses JSON Web Tokens (JWT) for secure session management:
+
+- **Algorithm:** HS256 (HMAC with SHA-256)
+- **Duration:** 7 days
+- **Storage:** HTTP-only cookie named "session"
+- **Cookie settings:**
+  - `httpOnly: true` - Prevents JavaScript access
+  - `secure: true` - HTTPS only in production
+  - `sameSite: lax` - CSRF protection
+  - `maxAge: 7 days`
+
+### Session Payload
+
+Each session token contains:
+- **userId:** Unique user identifier
+- **name:** User's display name
+- **email:** User's email address
+
+<Info>
+The session is created automatically after successful signup or login. Users don't need to take any additional action.
+</Info>
+
+### Token Expiration
+
+Sessions expire after 7 days. When a token expires:
+- Users are automatically logged out
+- They must log in again to access protected features
+- No data is lost - team memberships and user information remain intact
+
+## Password Security
+
+### Bcrypt Hashing
+
+All passwords are protected using industry-standard bcrypt hashing:
+
+- **Hashing rounds:** 10 (provides strong security with reasonable performance)
+- **Salt:** Automatically generated per password
+- **Storage:** Only the hash is stored; plain passwords are never saved
+
+### How It Works
+
+<Tabs>
+  <Tab title="During Signup">
+    1. User submits password in plain text (over HTTPS)
+    2. Password is hashed using bcrypt with 10 rounds
+    3. Only the hash is stored in the database
+    4. Original password is immediately discarded
+  </Tab>
+  
+  <Tab title="During Login">
+    1. User submits password in plain text (over HTTPS)
+    2. System retrieves stored hash from database
+    3. bcrypt compares submitted password with stored hash
+    4. Login succeeds only if comparison matches
+    5. Plain password is never stored or logged
+  </Tab>
+</Tabs>
+
+<Warning>
+Passwords cannot be recovered. If a user forgets their password, they must contact an administrator for account assistance.
+</Warning>
+
+## Logout
+
+Users can log out at any time:
+
+1. Click the logout button
+2. Session cookie is deleted from browser
+3. JWT token becomes invalid
+4. User is redirected to the home page
+
+<Info>
+Logging out doesn't affect team membership or any hackathon data - it only ends the current session.
+</Info>
+
+## Security Features
+
+### Protected Routes
+
+Certain pages and actions require authentication:
+- Team creation
+- Joining teams
+- Viewing team dashboard
+- Profile management
+
+If users try to access these while logged out, they're redirected to the login page.
+
+### Environment Security
+
+The authentication system requires a secret key for JWT signing:
+- **Environment variable:** `AUTH_SECRET` or `SECRET_AUTH`
+- **Requirement:** Must be set and non-empty
+- **Usage:** Used to sign and verify JWT tokens
+
+<Warning>
+The application will fail to start if the AUTH_SECRET environment variable is not configured. This prevents accidentally running with insecure default values.
+</Warning>
+
+## Common Error Messages
+
+| Error | Cause | Solution |
+|-------|-------|----------|
+| "Registration is currently closed." | Admin disabled registration | Wait for admin to reopen registration |
+| "Email must be in the format name.lastname25@spit.ac.in" | Invalid email format | Use institutional email with correct pattern |
+| "An account with this email already exists." | Email already registered | Use login instead, or contact admin |
+| "This roll number is already registered." | Roll number already used | Contact admin if this is an error |
+| "Invalid email or password." | Wrong credentials | Check email and password, try again |
+| "Session expired. Please log out and sign up again." | Session token invalid | Log out and log back in |
+
+## Best Practices
+
+<Accordion title="For Users">
+  - Use a strong, unique password (even though minimum is 6 characters)
+  - Keep your GitHub profile URL up to date
+  - Don't share your login credentials
+  - Log out when using shared computers
+</Accordion>
+
+<Accordion title="For Administrators">
+  - Keep AUTH_SECRET secure and random
+  - Close registration after deadline to prevent late signups
+  - Monitor duplicate registration attempts
+  - Use HTTPS in production for secure cookie transmission
+</Accordion>

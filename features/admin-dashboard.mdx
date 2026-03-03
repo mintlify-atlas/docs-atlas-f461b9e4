@@ -1,0 +1,519 @@
+---
+title: 'Admin Dashboard'
+description: 'Manage registrations, view statistics, and oversee hackathon teams'
+icon: 'gauge'
+---
+
+## Overview
+
+The admin dashboard provides comprehensive tools for hackathon organizers to manage registrations, monitor team formation, view real-time statistics, and export data for analysis.
+
+## Admin Authentication
+
+### Access Control
+
+The admin dashboard uses a separate authentication system from regular users:
+
+- **Password-based:** Single admin password for all administrators
+- **Environment variable:** `ADMIN_PASSWORD` must be set
+- **Session duration:** 4 hours
+- **Cookie name:** `admin_session`
+
+### Admin Login Flow
+
+<Steps>
+  <Step title="Navigate to Admin Page">
+    Access the admin login page (separate from user login).
+  </Step>
+  
+  <Step title="Enter Admin Password">
+    Provide the admin password configured in the environment variables.
+  </Step>
+  
+  <Step title="Authentication Check">
+    System verifies password matches `ADMIN_PASSWORD` environment variable.
+  </Step>
+  
+  <Step title="Session Creation">
+    Upon success, a secure admin session cookie is created (4-hour duration).
+  </Step>
+  
+  <Step title="Access Dashboard">
+    Full admin dashboard features become available.
+  </Step>
+</Steps>
+
+### Session Details
+
+- **Cookie settings:**
+  - `httpOnly: true` - Prevents JavaScript access
+  - `secure: true` - HTTPS only in production
+  - `sameSite: lax` - CSRF protection
+  - `maxAge: 4 hours` - Automatic logout after 4 hours
+- **Storage:** Simple authenticated/not authenticated flag
+- **Verification:** All admin actions check authentication status
+
+<Warning>
+The application will fail if ADMIN_PASSWORD is not configured. This prevents unauthorized access with default credentials.
+</Warning>
+
+### Admin Logout
+
+Administrators can log out at any time:
+1. Click logout button
+2. Admin session cookie is deleted
+3. Access to admin features is revoked
+4. Must log in again to access dashboard
+
+## Dashboard Statistics
+
+### Overview Metrics
+
+The dashboard displays real-time statistics about hackathon participation:
+
+<Accordion title="User Statistics">
+  - **Total Users:** All registered participants
+  - **Users With Team:** Participants who have joined a team
+  - **Users Without Team:** Participants still looking for teams
+  - **Branch Breakdown:** User counts by branch (CE, CSE, EXTC)
+</Accordion>
+
+<Accordion title="Team Statistics">
+  - **Total Teams:** Number of created teams
+  - **Team Size Distribution:** Count of teams by member count (1, 2, or 3 members)
+  - Helps identify solo participants and full teams
+</Accordion>
+
+<Accordion title="Registration Status">
+  - **Registration Open/Closed:** Current registration state
+  - Toggleable by administrators
+  - Prevents new signups when closed
+</Accordion>
+
+### Statistics Calculation
+
+All statistics are calculated in real-time from the database:
+- No caching delays
+- Accurate reflection of current state
+- Efficient aggregation queries
+- Branch breakdown uses database grouping for performance
+
+<Info>
+The dashboard automatically refreshes statistics. No manual refresh needed for most updates.
+</Info>
+
+## Team Management
+
+### Viewing Teams
+
+Administrators can view all teams with full details:
+
+#### Team Information Displayed
+- **Team name:** As chosen by the team leader
+- **Join code:** 6-character code for joining
+- **Creation date:** When the team was created
+- **Member list:** All team members with:
+  - Name
+  - Email address
+  - Roll number
+  - GitHub profile URL
+  - Branch (CE, CSE, EXTC)
+  - Leadership status
+  - Join date (when they joined the team)
+
+#### Team Ordering
+- Teams sorted by creation date (newest first)
+- Members within each team sorted by leadership status (leader first)
+
+### Search Functionality
+
+Admins can search for specific teams or members:
+
+<Accordion title="Search by Team Name">
+  - Case-insensitive search
+  - Partial matches supported
+  - Example: "rocket" matches "Rocket Squad" and "Rocket Team"
+</Accordion>
+
+<Accordion title="Search by Member Name">
+  - Finds teams containing members with matching names
+  - Case-insensitive
+  - Shows entire team when any member matches
+</Accordion>
+
+<Accordion title="Search by Member Email">
+  - Finds teams containing members with matching emails
+  - Useful for looking up specific participants
+  - Case-insensitive partial matching
+</Accordion>
+
+### Deleting Teams
+
+Administrators can delete teams when necessary:
+
+<Steps>
+  <Step title="Select Team">
+    Choose the team to delete from the team list.
+  </Step>
+  
+  <Step title="Confirm Deletion">
+    Confirm you want to permanently delete the team.
+  </Step>
+  
+  <Step title="Member Processing">
+    All team members are automatically removed from the team (their `teamId` is set to null).
+  </Step>
+  
+  <Step title="Team Removal">
+    The team record is permanently deleted from the database.
+  </Step>
+  
+  <Step title="Member Status">
+    Former members can now create or join new teams.
+  </Step>
+</Steps>
+
+<Warning>
+Deleting a team is permanent and cannot be undone. Members are not notified automatically - consider communicating with teams before deletion.
+</Warning>
+
+### Team Deletion Rules
+
+- **Authentication required:** Only logged-in admins can delete teams
+- **Member handling:** All members automatically removed from team
+- **Leadership cleared:** `isLead` status removed from all members
+- **Join code invalidated:** Code becomes unusable after deletion
+
+## User Management
+
+### Viewing Teamless Users
+
+The dashboard provides a dedicated view for participants without teams:
+
+#### Displayed Information
+- Name
+- Email address
+- Roll number
+- GitHub profile URL
+- Branch
+- Registration date
+
+#### Use Cases
+- Identify participants who need help finding teams
+- Reach out to solo participants near deadlines
+- Track registration but not team formation rate
+- Export for targeted communication
+
+### Search Teamless Users
+
+Search functionality for teamless participants:
+
+<Accordion title="Search by Name">
+  Case-insensitive partial matching on user names.
+</Accordion>
+
+<Accordion title="Search by Email">
+  Find users by email address (case-insensitive).
+</Accordion>
+
+<Accordion title="Search by Roll Number">
+  Exact or partial roll number matching.
+</Accordion>
+
+## Registration Control
+
+### Toggle Registration Status
+
+Administrators can control when new participants can sign up:
+
+<Tabs>
+  <Tab title="Open Registration">
+    - New users can create accounts
+    - Signup form is accessible
+    - Used during registration periods
+    - Default state when first deployed
+  </Tab>
+  
+  <Tab title="Close Registration">
+    - New signups are blocked
+    - Existing users can still log in
+    - Signup form shows: "Registration is currently closed."
+    - Used after registration deadline
+  </Tab>
+</Tabs>
+
+### Toggle Process
+
+<Steps>
+  <Step title="Access Control Panel">
+    Navigate to registration settings in admin dashboard.
+  </Step>
+  
+  <Step title="Select State">
+    Choose to open or close registration.
+  </Step>
+  
+  <Step title="Database Update">
+    System updates the singleton `siteSettings` record.
+  </Step>
+  
+  <Step title="Immediate Effect">
+    Change takes effect instantly for all new signup attempts.
+  </Step>
+</Steps>
+
+<Info>
+Toggling registration does not affect existing users - they can continue logging in and managing teams regardless of registration status.
+</Info>
+
+### Database Implementation
+
+- **Table:** `siteSettings`
+- **Record ID:** `singleton` (only one record exists)
+- **Field:** `registrationOpen` (boolean)
+- **Default:** `true` (open by default)
+- **Update method:** Upsert (create if missing, update if exists)
+
+## Activity Log
+
+The dashboard shows recent hackathon activity:
+
+### Activity Types
+
+<Accordion title="User Registered">
+  - **Shows:** User name, email, branch
+  - **Details:** Registration timestamp
+  - **Use case:** Monitor signup rate and timing
+</Accordion>
+
+<Accordion title="Team Created">
+  - **Shows:** Team name
+  - **Details:** Creation timestamp
+  - **Use case:** Track team formation progress
+</Accordion>
+
+### Activity Display
+
+- **Sorting:** Most recent activity first
+- **Limit:** Shows last 30 events
+- **Sources:**
+  - 20 most recent user registrations
+  - 20 most recent team creations
+  - Combined and sorted by timestamp
+- **Refresh:** Updates with dashboard refresh
+
+<Info>
+The activity log helps admins monitor hackathon momentum and identify busy registration periods.
+</Info>
+
+## CSV Data Export
+
+### Export Teams
+
+Administrators can export complete team data as CSV:
+
+#### Export Format
+
+```csv
+Team Name,Join Code,Member Name,Email,Roll Number,GitHub,Branch,Role
+"Rocket Squad",ABC123,"John Doe",john.doe25@spit.ac.in,2025123456,https://github.com/johndoe,CSE,Leader
+"Rocket Squad",ABC123,"Jane Smith",jane.smith25@spit.ac.in,2025123457,https://github.com/janesmith,CE,Member
+```
+
+#### Data Structure
+
+- **One row per team member** (teams with multiple members span multiple rows)
+- **Team information repeated** for each member
+- **Role indication:** "Leader" or "Member"
+- **Quoted fields:** Team names and member names (handles commas in names)
+- **Ordering:** Teams sorted by creation date (oldest first)
+
+#### Use Cases
+
+- Import into spreadsheet software for analysis
+- Generate team contact lists
+- Create participation certificates
+- Track team composition by branch
+- Backup team data
+
+### Export Users
+
+Administrators can export all registered users:
+
+#### Export Format
+
+```csv
+Name,Email,Roll Number,GitHub,Branch,Team,Role,Registered At
+"John Doe",john.doe25@spit.ac.in,2025123456,https://github.com/johndoe,CSE,"Rocket Squad",Leader,2026-03-01T10:30:00.000Z
+"Jane Smith",jane.smith25@spit.ac.in,2025123457,https://github.com/janesmith,CE,"Rocket Squad",Member,2026-03-01T11:15:00.000Z
+"Bob Wilson",bob.wilson25@spit.ac.in,2025123458,https://github.com/bobwilson,EXTC,No Team,Member,2026-03-01T12:00:00.000Z
+```
+
+#### Data Structure
+
+- **One row per user**
+- **Team information included** (or "No Team" if not in a team)
+- **Registration timestamp:** ISO 8601 format
+- **Ordering:** Users sorted by registration date (oldest first)
+
+#### Use Cases
+
+- Participant directory
+- Email list generation
+- Branch-wise participant analysis
+- Track registration timing
+- Identify teamless participants
+- Complete hackathon roster
+
+### Export Process
+
+<Steps>
+  <Step title="Select Export Type">
+    Choose between Teams CSV or Users CSV.
+  </Step>
+  
+  <Step title="Generate File">
+    System queries database and formats data as CSV.
+  </Step>
+  
+  <Step title="Download">
+    CSV file is provided for download.
+  </Step>
+  
+  <Step title="Import to Tools">
+    Open in Excel, Google Sheets, or other CSV-compatible software.
+  </Step>
+</Steps>
+
+<Warning>
+Exported data contains personal information (emails, roll numbers). Handle CSV files securely and delete when no longer needed.
+</Warning>
+
+## Security Features
+
+### Authentication Checks
+
+All admin operations verify authentication:
+
+<Accordion title="Protected Operations">
+  - Viewing statistics
+  - Viewing teams and users
+  - Deleting teams
+  - Toggling registration
+  - Exporting CSV data
+  - All return "Unauthorized" error if not logged in
+</Accordion>
+
+<Accordion title="Session Validation">
+  - Every admin action checks for valid admin session
+  - Expired sessions (>4 hours) are invalid
+  - Manual logout immediately invalidates session
+  - No token manipulation possible (httpOnly cookie)
+</Accordion>
+
+### Password Security
+
+<Info>
+Unlike user passwords, the admin password is stored in environment variables and checked directly (not hashed). Keep ADMIN_PASSWORD secret and change it regularly.
+</Info>
+
+**Best practices:**
+- Use a strong, random admin password
+- Don't share admin password via insecure channels
+- Rotate password periodically
+- Never commit ADMIN_PASSWORD to version control
+- Use different passwords for different environments (dev/staging/production)
+
+## Common Error Messages
+
+| Error | Cause | Solution |
+|-------|-------|----------|
+| "Admin password not configured." | ADMIN_PASSWORD not set | Set environment variable |
+| "Incorrect password." | Wrong admin password | Check password and try again |
+| "Unauthorized." | Not logged in as admin | Log in to admin dashboard |
+| "Failed to delete team." | Database error during deletion | Check logs, try again |
+| Session expired (automatic) | 4 hours elapsed | Log in again |
+
+## Best Practices
+
+### For Administrators
+
+<Accordion title="Monitor Registration Progress">
+  - Check dashboard regularly during registration period
+  - Track registration vs. team formation rates
+  - Identify and help teamless users
+  - Use activity log to spot busy times
+</Accordion>
+
+<Accordion title="Manage Registration Windows">
+  - Open registration at announced start time
+  - Close registration after deadline
+  - Export data before closing registration (backup)
+  - Communicate registration status to participants
+</Accordion>
+
+<Accordion title="Handle Data Securely">
+  - Download CSV exports only when needed
+  - Delete export files after use
+  - Don't share participant data unnecessarily
+  - Keep admin password confidential
+  - Log out after admin sessions
+</Accordion>
+
+<Accordion title="Team Management">
+  - Only delete teams when absolutely necessary
+  - Communicate with teams before deletion
+  - Document reasons for team deletions
+  - Export data before making changes
+</Accordion>
+
+### Dashboard Usage Tips
+
+<Accordion title="Real-Time Monitoring">
+  - Dashboard updates automatically
+  - Use search to find specific teams/users quickly
+  - Monitor team size distribution to spot trends
+  - Watch for users stuck without teams
+</Accordion>
+
+<Accordion title="Data Analysis">
+  - Export CSV for deeper analysis in spreadsheets
+  - Track branch participation balance
+  - Identify popular team formation times
+  - Monitor registration completion rates
+</Accordion>
+
+<Accordion title="Troubleshooting">
+  - Use search to verify user complaints
+  - Check activity log for timing of issues
+  - Export data before making bulk changes
+  - Document admin actions for accountability
+</Accordion>
+
+## Technical Details
+
+### Cookie Security
+
+- **Separate from user sessions:** Admin and user cookies are independent
+- **HTTP-only flag:** Prevents XSS attacks from stealing admin session
+- **Secure flag:** Requires HTTPS in production
+- **SameSite:** Prevents CSRF attacks
+- **Path restriction:** Cookie only sent to admin routes
+
+### Database Queries
+
+- **Statistics:** Optimized aggregation queries with grouping
+- **Search:** Case-insensitive queries using Prisma's mode option
+- **Exports:** Single query with all necessary joins
+- **No N+1 problems:** All related data fetched with includes
+
+### Performance Considerations
+
+- Activity log limited to 30 events (prevents large data transfers)
+- CSV exports stream data (handles large datasets)
+- Statistics use efficient COUNT and GROUP BY operations
+- Search uses database indexes for speed
+
+<Info>
+The admin dashboard is optimized for hackathons with hundreds of participants. For larger events (1000+ participants), consider adding pagination to team/user lists.
+</Info>

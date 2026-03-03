@@ -1,0 +1,595 @@
+---
+title: "Team Actions"
+description: "Server actions for team management including create, join, leave, and member operations"
+---
+
+## Overview
+
+Team server actions handle all team-related operations including creation, joining, leaving, and member management. All actions are defined in `~/workspace/source/lib/actions.ts` and require user authentication.
+
+## Types
+
+### ActionResult
+
+Generic return type for team operations.
+
+```typescript
+type ActionResult<T = void> =
+  | ({ success: true } & (T extends void ? {} : T))
+  | { success: false; error: string };
+```
+
+### TeamMember
+
+```typescript
+type TeamMember = {
+  id: string;
+  name: string;
+  email: string;
+  rollNumber: string;
+  githubUrl: string;
+  branch: string;
+  isLead: boolean;
+};
+```
+
+### TeamData
+
+```typescript
+type TeamData = {
+  id: string;
+  teamName: string;
+  joinCode: string;
+  members: TeamMember[];
+  isLeader: boolean;
+};
+```
+
+---
+
+## getTeamData()
+
+Retrieves the current user's team information including all members.
+
+### Signature
+
+```typescript
+async function getTeamData(): Promise<TeamData | null>
+```
+
+### Parameters
+
+None. Uses session to identify current user.
+
+### Returns
+
+<ResponseField name="TeamData" type="object | null">
+  Team information or `null` if user has no session or is not in a team
+  
+  <Expandable title="properties">
+    <ResponseField name="id" type="string">
+      Team unique identifier
+    </ResponseField>
+    
+    <ResponseField name="teamName" type="string">
+      Name of the team
+    </ResponseField>
+    
+    <ResponseField name="joinCode" type="string">
+      6-character join code for inviting members
+    </ResponseField>
+    
+    <ResponseField name="members" type="TeamMember[]">
+      Array of team members, ordered by join date (ascending)
+    </ResponseField>
+    
+    <ResponseField name="isLeader" type="boolean">
+      Whether the current user is the team leader
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Behavior
+
+1. Gets current user session
+2. Returns `null` if no session or user has no team
+3. Fetches team with all members
+4. Determines if current user is the leader
+5. Returns team data with members sorted by join date
+
+### Usage Example
+
+<CodeGroup>
+```typescript Server Component
+import { getTeamData } from "@/lib/actions";
+
+export default async function TeamPage() {
+  const teamData = await getTeamData();
+  
+  if (!teamData) {
+    return <div>You are not in a team yet.</div>;
+  }
+  
+  return (
+    <div>
+      <h1>{teamData.teamName}</h1>
+      <p>Join Code: {teamData.joinCode}</p>
+      <ul>
+        {teamData.members.map(member => (
+          <li key={member.id}>
+            {member.name} {member.isLead && "(Leader)"}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+```
+
+```typescript Client Component
+"use client";
+
+import { useEffect, useState } from "react";
+import { getTeamData, type TeamData } from "@/lib/actions";
+
+export function TeamInfo() {
+  const [team, setTeam] = useState<TeamData | null>(null);
+  
+  useEffect(() => {
+    getTeamData().then(setTeam);
+  }, []);
+  
+  if (!team) return <div>Loading...</div>;
+  
+  return <div>{team.teamName}</div>;
+}
+```
+</CodeGroup>
+
+---
+
+## createTeam()
+
+Creates a new team with the current user as the leader.
+
+### Signature
+
+```typescript
+async function createTeam(
+  input: z.input<typeof createTeamSchema>
+): Promise<ActionResult<{ joinCode: string }>>
+```
+
+### Parameters
+
+<ParamField path="input" type="object" required>
+  Team creation data
+  
+  <Expandable title="properties">
+    <ParamField path="teamName" type="string" required>
+      Name of the team
+      - **Validation**: Minimum 2 characters
+      - **Error**: "Team name must be at least 2 characters"
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+### Returns
+
+<ResponseField name="success" type="boolean" required>
+  Indicates whether team creation was successful
+</ResponseField>
+
+<ResponseField name="joinCode" type="string">
+  6-character join code (only present if `success` is `true`)
+</ResponseField>
+
+<ResponseField name="error" type="string">
+  Error message if `success` is `false`
+</ResponseField>
+
+### Error Messages
+
+- `"You must be logged in."` - No active session
+- `"Team name must be at least 2 characters"` - Validation error
+- `"Session expired. Please log out and sign up again."` - User not found in database
+- `"You are already in a team."` - User already belongs to a team
+
+### Behavior
+
+1. Verifies user is authenticated
+2. Validates team name
+3. Checks user doesn't already have a team
+4. Generates unique 6-character join code (alphanumeric, excluding confusing characters)
+5. Creates team in database
+6. Sets current user as team leader (`isLead: true`)
+7. Returns success with join code
+
+### Join Code Format
+
+- **Length**: 6 characters
+- **Character set**: `ABCDEFGHJKLMNPQRSTUVWXYZ23456789` (excludes I, O, 0, 1 to avoid confusion)
+- **Uniqueness**: Retries up to 10 times if duplicate found
+
+### Usage Example
+
+<CodeGroup>
+```typescript Server Action
+"use server";
+
+import { createTeam } from "@/lib/actions";
+
+export async function handleCreateTeam(formData: FormData) {
+  const result = await createTeam({
+    teamName: formData.get("teamName") as string,
+  });
+  
+  if (!result.success) {
+    return { error: result.error };
+  }
+  
+  return { joinCode: result.joinCode };
+}
+```
+
+```typescript Client Component
+import { useActionState } from "react";
+import { createTeam } from "@/lib/actions";
+
+export function CreateTeamForm() {
+  const [state, action, pending] = useActionState(createTeam, null);
+  
+  return (
+    <form action={action}>
+      <input name="teamName" placeholder="Team Name" required />
+      {state?.success && (
+        <p>Team created! Join code: {state.joinCode}</p>
+      )}
+      {!state?.success && state?.error && (
+        <p className="error">{state.error}</p>
+      )}
+      <button disabled={pending}>Create Team</button>
+    </form>
+  );
+}
+```
+</CodeGroup>
+
+---
+
+## joinTeam()
+
+Joins an existing team using a join code.
+
+### Signature
+
+```typescript
+async function joinTeam(
+  input: z.input<typeof joinTeamSchema>
+): Promise<ActionResult>
+```
+
+### Parameters
+
+<ParamField path="input" type="object" required>
+  Join code data
+  
+  <Expandable title="properties">
+    <ParamField path="joinCode" type="string" required>
+      6-character team join code
+      - **Validation**: Exactly 6 characters, automatically converted to uppercase
+      - **Error**: "Join code must be 6 characters"
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+### Returns
+
+<ResponseField name="success" type="boolean" required>
+  Indicates whether joining was successful
+</ResponseField>
+
+<ResponseField name="error" type="string">
+  Error message if `success` is `false`
+</ResponseField>
+
+### Error Messages
+
+- `"You must be logged in."` - No active session
+- `"Join code must be 6 characters"` - Validation error
+- `"You are already in a team. Leave it first."` - User already in a team
+- `"Invalid join code."` - Join code doesn't match any team
+- `"Team is already full (max 3 members)."` - Team has reached capacity
+
+### Behavior
+
+1. Verifies user is authenticated
+2. Validates and uppercases join code
+3. Checks user is not already in a team
+4. Finds team by join code
+5. Verifies team has fewer than 3 members
+6. Adds user to team as non-leader (`isLead: false`)
+
+### Team Capacity
+
+- **Maximum members**: 3
+- **Enforcement**: Checked before adding member
+
+### Usage Example
+
+<CodeGroup>
+```typescript Server Action
+"use server";
+
+import { joinTeam } from "@/lib/actions";
+
+export async function handleJoinTeam(formData: FormData) {
+  const result = await joinTeam({
+    joinCode: formData.get("joinCode") as string,
+  });
+  
+  return result;
+}
+```
+
+```typescript Client Component
+import { useActionState } from "react";
+import { joinTeam } from "@/lib/actions";
+
+export function JoinTeamForm() {
+  const [state, action, pending] = useActionState(joinTeam, null);
+  
+  return (
+    <form action={action}>
+      <input 
+        name="joinCode" 
+        placeholder="Enter 6-character code" 
+        maxLength={6}
+        required 
+      />
+      {state?.success && (
+        <p>Successfully joined team!</p>
+      )}
+      {!state?.success && state?.error && (
+        <p className="error">{state.error}</p>
+      )}
+      <button disabled={pending}>Join Team</button>
+    </form>
+  );
+}
+```
+</CodeGroup>
+
+---
+
+## leaveTeam()
+
+Removes the current user from their team.
+
+### Signature
+
+```typescript
+async function leaveTeam(): Promise<ActionResult>
+```
+
+### Parameters
+
+None. Uses session to identify current user.
+
+### Returns
+
+<ResponseField name="success" type="boolean" required>
+  Indicates whether leaving was successful
+</ResponseField>
+
+<ResponseField name="error" type="string">
+  Error message if `success` is `false`
+</ResponseField>
+
+### Error Messages
+
+- `"You must be logged in."` - No active session
+- `"You are not in a team."` - User has no team
+
+### Behavior
+
+1. Verifies user is authenticated
+2. Checks user is in a team
+3. Removes user from team (sets `teamId: null`, `isLead: false`)
+4. **If team is now empty**: Deletes the team
+5. **If user was leader and team not empty**: Transfers leadership to earliest remaining member (by `createdAt`)
+
+### Leadership Transfer
+
+When a leader leaves a non-empty team:
+- Leadership is automatically transferred to the member who joined earliest
+- Based on `createdAt` timestamp (ascending order)
+- New leader's `isLead` is set to `true`
+
+### Usage Example
+
+<CodeGroup>
+```typescript Server Action
+"use server";
+
+import { leaveTeam } from "@/lib/actions";
+
+export async function handleLeaveTeam() {
+  const result = await leaveTeam();
+  return result;
+}
+```
+
+```typescript Client Component
+import { leaveTeam } from "@/lib/actions";
+import { useRouter } from "next/navigation";
+
+export function LeaveTeamButton() {
+  const router = useRouter();
+  
+  async function handleLeave() {
+    const result = await leaveTeam();
+    if (result.success) {
+      router.refresh();
+    } else {
+      alert(result.error);
+    }
+  }
+  
+  return (
+    <button onClick={handleLeave}>Leave Team</button>
+  );
+}
+```
+</CodeGroup>
+
+---
+
+## removeMember()
+
+Removes a member from the team (leader only).
+
+### Signature
+
+```typescript
+async function removeMember(
+  memberId: string
+): Promise<ActionResult>
+```
+
+### Parameters
+
+<ParamField path="memberId" type="string" required>
+  User ID of the member to remove
+</ParamField>
+
+### Returns
+
+<ResponseField name="success" type="boolean" required>
+  Indicates whether removal was successful
+</ResponseField>
+
+<ResponseField name="error" type="string">
+  Error message if `success` is `false`
+</ResponseField>
+
+### Error Messages
+
+- `"You must be logged in."` - No active session
+- `"Only the team leader can remove members."` - Current user is not the team leader
+- `"Member not found in your team."` - Member ID doesn't exist or is in a different team
+- `"You cannot remove yourself as leader. Use 'Leave Team' instead."` - Attempting to remove self as leader
+
+### Behavior
+
+1. Verifies user is authenticated
+2. Checks current user is team leader
+3. Verifies target member exists and is in the same team
+4. Prevents leader from removing themselves (must use `leaveTeam()` instead)
+5. Removes member from team (sets `teamId: null`, `isLead: false`)
+
+### Permissions
+
+- **Required**: Current user must be team leader (`isLead: true`)
+- **Restriction**: Leader cannot remove themselves
+
+### Usage Example
+
+<CodeGroup>
+```typescript Server Action
+"use server";
+
+import { removeMember } from "@/lib/actions";
+
+export async function handleRemoveMember(memberId: string) {
+  const result = await removeMember(memberId);
+  return result;
+}
+```
+
+```typescript Client Component
+import { removeMember } from "@/lib/actions";
+import { useRouter } from "next/navigation";
+import type { TeamMember } from "@/lib/actions";
+
+export function MemberList({ 
+  members, 
+  isLeader 
+}: { 
+  members: TeamMember[];
+  isLeader: boolean;
+}) {
+  const router = useRouter();
+  
+  async function handleRemove(memberId: string) {
+    if (!confirm("Remove this member?")) return;
+    
+    const result = await removeMember(memberId);
+    if (result.success) {
+      router.refresh();
+    } else {
+      alert(result.error);
+    }
+  }
+  
+  return (
+    <ul>
+      {members.map(member => (
+        <li key={member.id}>
+          {member.name} {member.isLead && "(Leader)"}
+          {isLeader && !member.isLead && (
+            <button onClick={() => handleRemove(member.id)}>
+              Remove
+            </button>
+          )}
+        </li>
+      ))}
+    </ul>
+  );
+}
+```
+</CodeGroup>
+
+---
+
+## Validation Schemas
+
+### createTeamSchema
+
+```typescript
+const createTeamSchema = z.object({
+  teamName: z.string().min(2, "Team name must be at least 2 characters"),
+});
+```
+
+### joinTeamSchema
+
+```typescript
+const joinTeamSchema = z.object({
+  joinCode: z
+    .string()
+    .length(6, "Join code must be 6 characters")
+    .toUpperCase(),
+});
+```
+
+---
+
+## Helper Functions
+
+### generateJoinCode()
+
+Internal helper that generates random 6-character join codes.
+
+```typescript
+function generateJoinCode(): string {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let code = "";
+  for (let i = 0; i < 6; i++) {
+    code += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return code;
+}
+```
+
+**Character set**: Excludes `I`, `O`, `0`, `1` to prevent confusion.

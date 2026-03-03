@@ -1,0 +1,166 @@
+---
+title: Deployment Overview
+description: General deployment considerations for the Coders 2029 hackathon site
+---
+
+This guide covers the essential requirements and considerations for deploying the Coders 2029 registration portal to production.
+
+## Technology Requirements
+
+The Coders 2029 site is built with modern web technologies that have specific deployment needs:
+
+- **Next.js 16** with App Router and Turbopack
+- **React 19** for the frontend
+- **PostgreSQL** database (required)
+- **Node.js 18+** runtime
+
+## Database Requirements
+
+<Warning>
+A PostgreSQL database is **required** for this application. The site uses Prisma ORM with the `@prisma/adapter-pg` driver and cannot run without a proper database connection.
+</Warning>
+
+The application uses:
+- **Prisma ORM** for database management
+- **PostgreSQL-specific features** including UUID types and timestamptz
+- **Database migrations** that must be applied before the app can run
+
+### Supported Database Providers
+
+You can use any PostgreSQL provider:
+- **Vercel Postgres** (recommended for Vercel deployments)
+- **Neon** (serverless PostgreSQL)
+- **Supabase**
+- **Railway**
+- **Self-hosted PostgreSQL**
+
+## Environment Variables
+
+The following environment variable is **required** for deployment:
+
+| Variable | Description | Example |
+|----------|-------------|----------|
+| `POSTGRES_URL` | PostgreSQL connection string | `postgresql://user:pass@host:5432/coders2029` |
+
+<Note>
+For SSL-enabled providers like Neon, append `?sslmode=require` to your connection string.
+</Note>
+
+### Example Connection Strings
+
+<CodeGroup>
+
+```bash Vercel Postgres
+POSTGRES_URL="postgresql://user:pass@aws-0-us-east-1.pooler.vercel-postgres.com:5432/verceldb?sslmode=require"
+```
+
+```bash Neon
+POSTGRES_URL="postgresql://user:pass@ep-cool-darkness-123456.us-east-2.aws.neon.tech/coders2029?sslmode=require"
+```
+
+```bash Supabase
+POSTGRES_URL="postgresql://postgres:pass@db.projectref.supabase.co:5432/postgres"
+```
+
+```bash Railway
+POSTGRES_URL="postgresql://postgres:pass@containers.railway.app:5432/railway"
+```
+
+</CodeGroup>
+
+## Production Build Process
+
+The build process includes two critical steps:
+
+<Steps>
+
+<Step title="Generate Prisma Client">
+  The Prisma client must be generated before building the Next.js app:
+  ```bash
+  prisma generate
+  ```
+  This is automatically handled by the `build` script in `package.json`.
+</Step>
+
+<Step title="Build Next.js Application">
+  After Prisma client generation, Next.js builds the production-optimized app:
+  ```bash
+  next build
+  ```
+  This compiles the App Router pages, API routes, and server components.
+</Step>
+
+</Steps>
+
+The complete build command defined in `package.json`:
+
+```json
+"build": "prisma generate && next build"
+```
+
+## Database Migrations
+
+<Warning>
+Before your application can run in production, you **must** apply database migrations to set up the required schema.
+</Warning>
+
+The application requires these database tables:
+- `teams` - Team information and join codes
+- `users` - User accounts and team memberships
+- `site_settings` - Admin configuration (registration open/closed)
+
+Migrations are located in `prisma/migrations/` and should be applied using:
+
+```bash
+npx prisma migrate deploy
+```
+
+<Note>
+Most deployment platforms can run this command automatically during the build or deployment process.
+</Note>
+
+## Build Settings
+
+When configuring your deployment platform, use these settings:
+
+| Setting | Value |
+|---------|-------|
+| **Framework** | Next.js |
+| **Build Command** | `npm run build` |
+| **Output Directory** | `.next` |
+| **Install Command** | `npm install` |
+| **Node Version** | 18.x or higher |
+
+## Post-Install Hook
+
+The application includes a `postinstall` script that automatically generates the Prisma client after dependencies are installed:
+
+```json
+"postinstall": "prisma generate"
+```
+
+This ensures the Prisma client is always available during the build process.
+
+## Performance Considerations
+
+- **Server Components**: The app uses React Server Components for optimal performance
+- **Turbopack**: Development uses Turbopack for faster builds
+- **Database Connection Pooling**: Consider using connection pooling for PostgreSQL (e.g., PgBouncer or provider-native pooling)
+- **Edge Runtime**: API routes use Node.js runtime (not Edge) due to Prisma requirements
+
+## Pre-Deployment Checklist
+
+Before deploying to production:
+
+- [ ] Set up a PostgreSQL database
+- [ ] Configure `POSTGRES_URL` environment variable
+- [ ] Ensure the connection string includes SSL if required by your provider
+- [ ] Verify the build command includes `prisma generate`
+- [ ] Plan how database migrations will be applied
+- [ ] Test the production build locally with `npm run build && npm start`
+
+## Next Steps
+
+Follow the platform-specific deployment guides:
+
+- [Vercel Deployment](/deployment/vercel) - Recommended for Next.js applications

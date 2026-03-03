@@ -1,0 +1,177 @@
+---
+title: Introduction
+description: Welcome to the Coders 2029 Hackathon Registration Portal - a modern, full-stack platform for managing hackathon registrations with style
+---
+
+# Welcome to Coders 2029
+
+The **Coders 2029 Hackathon Registration Portal** is a cutting-edge web application built for the 12-Hour Frontend Hackathon. It provides a seamless experience for participants to register, form teams, and manage their hackathon journey - all while enjoying a stunning 3D interface powered by Three.js.
+
+<img
+  className="block dark:hidden"
+  src="/images/hero-light.png"
+  alt="Coders 2029 Hero"
+/>
+<img
+  className="hidden dark:block"
+  src="/images/hero-dark.png"
+  alt="Coders 2029 Hero"
+/>
+
+## What is Coders 2029?
+
+Coders 2029 is a complete registration and team management system designed specifically for hackathons. Built with Next.js 16, React 19, and the latest web technologies, it offers:
+
+- **Secure Authentication** with JWT sessions and bcrypt password hashing
+- **Real-time Team Management** with unique join codes for up to 3-member teams
+- **Admin Dashboard** for complete event oversight and control
+- **Immersive 3D Experience** using Three.js, React Three Fiber, and Drei
+- **Modern UI** powered by Radix UI, shadcn/ui, and Tailwind CSS 4
+
+<Note>
+  This portal was built for the Coders 2029 hackathon at SPIT (Sardar Patel Institute of Technology) and is designed to handle hundreds of concurrent registrations.
+</Note>
+
+## Key Features
+
+<CardGroup cols={2}>
+  <Card
+    title="Secure Authentication"
+    icon="shield-check"
+    href="/features/authentication"
+  >
+    Email and password-based signup and login with bcrypt hashing and JWT sessions. Includes validation for SPIT email domains and roll numbers.
+  </Card>
+  
+  <Card
+    title="Team Management"
+    icon="users"
+    href="/features/team-management"
+  >
+    Create teams with unique join codes, invite teammates (up to 3 members), and manage team composition. Team leads have special privileges.
+  </Card>
+  
+  <Card
+    title="Admin Dashboard"
+    icon="gauge"
+    href="/features/admin-dashboard"
+  >
+    Comprehensive admin interface to oversee all teams, manage registrations, view member details, and toggle site-wide settings like registration status.
+  </Card>
+  
+  <Card
+    title="3D Hero Canvas"
+    icon="cube"
+  >
+    Stunning Three.js-powered landing page with animated wireframe geometries, floating particles, orbiting rings, and a dynamic grid floor.
+  </Card>
+</CardGroup>
+
+## Tech Stack
+
+Coders 2029 is built with a modern, production-ready stack:
+
+| Layer | Technology |
+|-------|------------|
+| **Framework** | Next.js 16 (App Router, Turbopack, React 19) |
+| **3D Graphics** | Three.js, React Three Fiber, Drei |
+| **Database** | PostgreSQL with Prisma ORM |
+| **Authentication** | bcryptjs, jose (JWT) |
+| **Forms** | React Hook Form, Zod validation |
+| **UI Components** | Radix UI, shadcn/ui, Lucide icons |
+| **Styling** | Tailwind CSS 4 |
+| **Tooling** | Biome (lint + format), TypeScript |
+
+<Tip>
+  The project uses Next.js 16's App Router with Turbopack for lightning-fast development builds and React 19's latest features.
+</Tip>
+
+## Database Schema
+
+The application uses a PostgreSQL database with three main models:
+
+**User Model**
+- Stores participant information (name, email, roll number, GitHub profile)
+- Branch selection (CE, CSE, EXTC)
+- Password hashing with bcrypt
+- Team relationship and lead status
+
+**Team Model**
+- Team name and unique join code
+- One-to-many relationship with users
+- Maximum 3 members per team
+
+**SiteSettings Model**
+- Global settings like registration open/closed status
+- Singleton pattern for centralized configuration
+
+## Quick Navigation
+
+<CardGroup cols={2}>
+  <Card title="Quickstart Guide" icon="rocket" href="/quickstart">
+    Get the portal running locally in under 5 minutes
+  </Card>
+  
+  <Card title="API Reference" icon="code" href="/api/auth-actions">
+    Explore the authentication and team management APIs
+  </Card>
+  
+  <Card title="Deployment" icon="cloud" href="/deployment/overview">
+    Deploy to Vercel with PostgreSQL
+  </Card>
+  
+  <Card title="Configuration" icon="gear" href="/development/environment-variables">
+    Configure environment variables and database settings
+  </Card>
+</CardGroup>
+
+## Project Structure
+
+The codebase follows Next.js 16 App Router conventions:
+
+```
+app/
+  layout.tsx              # Root layout with theme provider
+  page.tsx                # Landing page with 3D hero
+  signup/page.tsx         # User registration
+  login/page.tsx          # User authentication
+  team/                   # Team creation and join flows
+  admin/                  # Admin dashboard and controls
+  api/                    # API routes for auth and teams
+
+components/
+  hero/                   # HeroCanvas and HeroSection
+  sections/               # AboutSection, HackathonSection
+  ui/                     # shadcn/ui primitives
+  
+lib/
+  actions.ts              # Server actions for teams
+  auth-actions.ts         # Server actions for auth
+  auth.ts                 # JWT session utilities
+  db/prisma.ts            # PrismaClient singleton
+  
+prisma/
+  schema.prisma           # Database schema
+  migrations/             # SQL migrations
+```
+
+<Warning>
+  The project is currently private and not open-source. Contact the maintainers for access.
+</Warning>
+
+## Getting Started
+
+Ready to dive in? Head over to the [Quickstart Guide](/quickstart) to get the portal running locally, or explore the features in depth:
+
+- [Authentication System](/features/authentication)
+- [Team Management](/features/team-management)
+- [Admin Dashboard](/features/admin-dashboard)
+
+## Community & Support
+
+Built with passion by the Coders 2029 team. For questions or issues:
+
+- Review the [API Documentation](/api/auth-actions)
+- Contact the admin team during the hackathon
+
+Let's build something amazing together! 🚀

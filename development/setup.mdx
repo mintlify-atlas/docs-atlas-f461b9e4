@@ -1,0 +1,196 @@
+---
+title: 'Development Setup'
+description: 'Get your local development environment up and running'
+---
+
+This guide will walk you through setting up the Coders 2029 Hackathon Site for local development.
+
+## Prerequisites
+
+Before you begin, ensure you have the following installed:
+
+- **Node.js** version 18 or higher
+- **PostgreSQL** database (see setup options below)
+- **Git** for cloning the repository
+
+## Setup Steps
+
+<Steps>
+  <Step title="Clone the Repository">
+    Clone the project and navigate to the directory:
+
+    ```bash
+    git clone <repo-url>
+    cd coders2029-site
+    ```
+  </Step>
+
+  <Step title="Install Dependencies">
+    Install all required npm packages:
+
+    ```bash
+    npm install
+    ```
+
+    This will also automatically run `prisma generate` via the postinstall hook.
+  </Step>
+
+  <Step title="Set Up PostgreSQL">
+    Choose one of the following PostgreSQL setup methods based on your preference and operating system.
+
+    <Accordion title="Postgres.app (macOS)">
+      Postgres.app is the easiest way to run PostgreSQL on macOS.
+
+      1. Download and install [Postgres.app](https://postgresapp.com)
+      2. Open the app and click **Initialize** or **Start**
+      3. Create the database:
+
+      ```bash
+      /Applications/Postgres.app/Contents/Versions/latest/bin/createdb coders2029
+      ```
+
+      Your connection URL will be:
+      ```
+      postgresql://<username>@localhost:5432/coders2029
+      ```
+
+      <Note>Run `whoami` in your terminal to get your macOS username.</Note>
+    </Accordion>
+
+    <Accordion title="Homebrew (macOS/Linux)">
+      Install PostgreSQL using Homebrew package manager:
+
+      ```bash
+      brew install postgresql@16
+      brew services start postgresql@16
+      createdb coders2029
+      ```
+
+      Your connection URL will be:
+      ```
+      postgresql://<username>@localhost:5432/coders2029
+      ```
+    </Accordion>
+
+    <Accordion title="Docker">
+      Run PostgreSQL in a Docker container:
+
+      ```bash
+      docker run --name coders2029-db \
+        -e POSTGRES_PASSWORD=secret \
+        -e POSTGRES_DB=coders2029 \
+        -p 5432:5432 -d postgres:16
+      ```
+
+      Your connection URL will be:
+      ```
+      postgresql://postgres:secret@localhost:5432/coders2029
+      ```
+    </Accordion>
+
+    <Accordion title="Neon (Cloud)">
+      [Neon](https://neon.tech) provides a serverless PostgreSQL database.
+
+      1. Create a free account at [neon.tech](https://neon.tech)
+      2. Create a new project
+      3. Copy the connection string from the dashboard
+
+      Your connection URL will look like:
+      ```
+      postgresql://user:pass@ep-xxx.neon.tech/coders2029?sslmode=require
+      ```
+    </Accordion>
+  </Step>
+
+  <Step title="Configure Environment Variables">
+    Copy the example environment file:
+
+    ```bash
+    cp .env.example .env
+    ```
+
+    Open `.env` and set your environment variables:
+
+    ```bash
+    # Database connection
+    POSTGRES_URL="postgresql://username@localhost:5432/coders2029"
+
+    # JWT authentication secret (generate a random string)
+    AUTH_SECRET="your-secret-key-here"
+
+    # Admin dashboard password
+    ADMIN_PASSWORD="your-admin-password"
+    ```
+
+    <Warning>
+      Make sure to use strong, unique values for `AUTH_SECRET` and `ADMIN_PASSWORD` in production.
+    </Warning>
+
+    See the [Environment Variables](/development/environment-variables) page for detailed information about each variable.
+  </Step>
+
+  <Step title="Run Database Migrations">
+    Apply the database schema using Prisma migrations:
+
+    ```bash
+    npm run db:migrate
+    ```
+
+    This will create all necessary tables in your PostgreSQL database.
+  </Step>
+
+  <Step title="Start the Development Server">
+    Launch the Next.js development server with Turbopack:
+
+    ```bash
+    npm run dev
+    ```
+
+    Open [http://localhost:3000](http://localhost:3000) in your browser to see the application.
+  </Step>
+</Steps>
+
+## Verification
+
+Once the development server is running, you should be able to:
+
+- View the landing page with the Three.js 3D hero
+- Navigate to `/signup` to create a new user account
+- Navigate to `/admin` to access the admin dashboard (use your `ADMIN_PASSWORD`)
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Database Guide" icon="database" href="/development/database">
+    Learn about the database schema and Prisma ORM usage
+  </Card>
+  <Card title="NPM Scripts" icon="terminal" href="/development/scripts">
+    Explore available development and build commands
+  </Card>
+</CardGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Database connection failed">
+    - Verify PostgreSQL is running: `pg_isready` (if PostgreSQL CLI tools are installed)
+    - Check your `POSTGRES_URL` in `.env` matches your database setup
+    - Ensure the database `coders2029` exists: `psql -l` to list databases
+  </Accordion>
+
+  <Accordion title="Missing AUTH_SECRET error">
+    Make sure you've set `AUTH_SECRET` in your `.env` file. Generate a secure random string:
+
+    ```bash
+    node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+    ```
+  </Accordion>
+
+  <Accordion title="Port 3000 already in use">
+    Either stop the process using port 3000 or specify a different port:
+
+    ```bash
+    PORT=3001 npm run dev
+    ```
+  </Accordion>
+</AccordionGroup>

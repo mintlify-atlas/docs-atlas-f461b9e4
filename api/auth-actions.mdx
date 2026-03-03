@@ -1,0 +1,359 @@
+---
+title: "Authentication Actions"
+description: "Server actions for user authentication including signup, login, and logout"
+---
+
+## Overview
+
+Authentication server actions handle user registration, login, and logout functionality. All actions are defined in `~/workspace/source/lib/auth-actions.ts` and use Zod for input validation.
+
+## Types
+
+### AuthResult
+
+Return type for authentication operations.
+
+```typescript
+type AuthResult =
+  | { success: true }
+  | { success: false; error: string };
+```
+
+---
+
+## signup()
+
+Registers a new user account with validation for SPIT college email format and roll numbers.
+
+### Signature
+
+```typescript
+async function signup(
+  input: z.input<typeof signupSchema>
+): Promise<AuthResult>
+```
+
+### Parameters
+
+<ParamField path="input" type="object" required>
+  User registration data
+  
+  <Expandable title="properties">
+    <ParamField path="name" type="string" required>
+      Full name of the user
+      - **Validation**: Minimum 2 characters
+      - **Error**: "Name must be at least 2 characters"
+    </ParamField>
+    
+    <ParamField path="email" type="string" required>
+      College email address
+      - **Format**: `name.lastname25@spit.ac.in`
+      - **Validation**: Must match pattern `/^[a-z]+\.[a-z]+25@spit\.ac\.in$/`
+      - **Errors**:
+        - "Enter a valid email"
+        - "Email must be in the format name.lastname25@spit.ac.in"
+        - "An account with this email already exists."
+    </ParamField>
+    
+    <ParamField path="rollNumber" type="string" required>
+      Student roll number
+      - **Format**: 10 digits starting with 2025
+      - **Validation**: Must match pattern `/^2025\d{6}$/`
+      - **Errors**:
+        - "Roll number must be 10 digits and start with 2025"
+        - "This roll number is already registered."
+    </ParamField>
+    
+    <ParamField path="githubUrl" type="string" required>
+      GitHub profile URL
+      - **Format**: `https://github.com/username`
+      - **Validation**: Must match pattern `/^https?:\/\/(www\.)?github\.com\/[A-Za-z0-9_.-]+\/?$/`
+      - **Error**: "Must be a valid GitHub profile URL (github.com/&lt;username&gt;)"
+    </ParamField>
+    
+    <ParamField path="branch" type="enum" required>
+      Academic branch
+      - **Options**: `"CE"`, `"CSE"`, `"EXTC"`
+    </ParamField>
+    
+    <ParamField path="password" type="string" required>
+      User password
+      - **Validation**: Minimum 6 characters
+      - **Error**: "Password must be at least 6 characters"
+    </ParamField>
+    
+    <ParamField path="confirmPassword" type="string" required>
+      Password confirmation
+      - **Validation**: Must match `password` field
+      - **Error**: "Passwords don't match"
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+### Returns
+
+<ResponseField name="success" type="boolean" required>
+  Indicates whether signup was successful
+</ResponseField>
+
+<ResponseField name="error" type="string">
+  Error message if `success` is `false`
+</ResponseField>
+
+### Error Messages
+
+- `"Registration is currently closed."` - Registration has been disabled by admin
+- `"An account with this email already exists."` - Email is already registered
+- `"This roll number is already registered."` - Roll number is already registered
+- Validation errors from Zod schema (see Parameters section)
+
+### Behavior
+
+1. Checks if registration is open via `siteSettings` table
+2. Validates input against `signupSchema`
+3. Checks for existing email and roll number
+4. Hashes password using bcrypt
+5. Creates user in database
+6. Creates session and redirects to `/`
+
+### Usage Example
+
+<CodeGroup>
+```typescript Server Component
+"use server";
+
+import { signup } from "@/lib/auth-actions";
+
+export async function handleSignup(formData: FormData) {
+  const result = await signup({
+    name: formData.get("name") as string,
+    email: formData.get("email") as string,
+    rollNumber: formData.get("rollNumber") as string,
+    githubUrl: formData.get("githubUrl") as string,
+    branch: formData.get("branch") as "CE" | "CSE" | "EXTC",
+    password: formData.get("password") as string,
+    confirmPassword: formData.get("confirmPassword") as string,
+  });
+  
+  if (!result.success) {
+    console.error(result.error);
+  }
+  // If successful, user is automatically redirected to /
+}
+```
+
+```typescript Client Component with useActionState
+import { useActionState } from "react";
+import { signup } from "@/lib/auth-actions";
+
+export function SignupForm() {
+  const [state, action, pending] = useActionState(signup, null);
+  
+  return (
+    <form action={action}>
+      {/* form fields */}
+      {!state?.success && state?.error && (
+        <p className="error">{state.error}</p>
+      )}
+    </form>
+  );
+}
+```
+</CodeGroup>
+
+---
+
+## login()
+
+Authenticates an existing user with email and password.
+
+### Signature
+
+```typescript
+async function login(
+  input: z.input<typeof loginSchema>
+): Promise<AuthResult>
+```
+
+### Parameters
+
+<ParamField path="input" type="object" required>
+  Login credentials
+  
+  <Expandable title="properties">
+    <ParamField path="email" type="string" required>
+      User's email address
+      - **Validation**: Valid email format
+      - **Error**: "Enter a valid email"
+    </ParamField>
+    
+    <ParamField path="password" type="string" required>
+      User's password
+      - **Validation**: Non-empty string
+      - **Error**: "Password is required"
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+### Returns
+
+<ResponseField name="success" type="boolean" required>
+  Indicates whether login was successful
+</ResponseField>
+
+<ResponseField name="error" type="string">
+  Error message if `success` is `false`
+</ResponseField>
+
+### Error Messages
+
+- `"Enter a valid email"` - Invalid email format
+- `"Password is required"` - Password field is empty
+- `"Invalid email or password."` - Authentication failed (user not found or incorrect password)
+
+### Behavior
+
+1. Validates input against `loginSchema`
+2. Finds user by email
+3. Verifies password using bcrypt
+4. Creates session and redirects to `/`
+
+### Usage Example
+
+<CodeGroup>
+```typescript Server Action
+"use server";
+
+import { login } from "@/lib/auth-actions";
+
+export async function handleLogin(formData: FormData) {
+  const result = await login({
+    email: formData.get("email") as string,
+    password: formData.get("password") as string,
+  });
+  
+  if (!result.success) {
+    return { error: result.error };
+  }
+  // If successful, user is automatically redirected to /
+}
+```
+
+```typescript Client Component
+import { useActionState } from "react";
+import { login } from "@/lib/auth-actions";
+
+export function LoginForm() {
+  const [state, action, pending] = useActionState(login, null);
+  
+  return (
+    <form action={action}>
+      <input name="email" type="email" required />
+      <input name="password" type="password" required />
+      {!state?.success && state?.error && (
+        <p className="error">{state.error}</p>
+      )}
+      <button disabled={pending}>Login</button>
+    </form>
+  );
+}
+```
+</CodeGroup>
+
+---
+
+## logout()
+
+Logs out the current user by deleting their session.
+
+### Signature
+
+```typescript
+async function logout(): Promise<void>
+```
+
+### Parameters
+
+None.
+
+### Returns
+
+Void. Automatically redirects to `/` after deleting the session.
+
+### Behavior
+
+1. Deletes the user's session cookie
+2. Redirects to `/`
+
+### Usage Example
+
+<CodeGroup>
+```typescript Server Component
+"use server";
+
+import { logout } from "@/lib/auth-actions";
+
+export async function handleLogout() {
+  await logout();
+  // User is automatically redirected to /
+}
+```
+
+```typescript Client Component
+import { logout } from "@/lib/auth-actions";
+
+export function LogoutButton() {
+  return (
+    <form action={logout}>
+      <button type="submit">Logout</button>
+    </form>
+  );
+}
+```
+</CodeGroup>
+
+---
+
+## Validation Schemas
+
+### signupSchema
+
+```typescript
+const signupSchema = z
+  .object({
+    name: z.string().min(2, "Name must be at least 2 characters"),
+    email: z
+      .string()
+      .email("Enter a valid email")
+      .refine(
+        (e) => /^[a-z]+\.[a-z]+25@spit\.ac\.in$/.test(e.toLowerCase()),
+        "Email must be in the format name.lastname25@spit.ac.in"
+      ),
+    rollNumber: z
+      .string()
+      .regex(/^2025\d{6}$/, "Roll number must be 10 digits and start with 2025"),
+    githubUrl: z
+      .string()
+      .url("Enter a valid URL")
+      .refine(
+        (u) => /^https?:\/\/(www\.)?github\.com\/[A-Za-z0-9_.-]+\/?$/.test(u),
+        "Must be a valid GitHub profile URL (github.com/<username>)"
+      ),
+    branch: z.enum(["CE", "CSE", "EXTC"]),
+    password: z.string().min(6, "Password must be at least 6 characters"),
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords don't match",
+    path: ["confirmPassword"],
+  });
+```
+
+### loginSchema
+
+```typescript
+const loginSchema = z.object({
+  email: z.string().email("Enter a valid email"),
+  password: z.string().min(1, "Password is required"),
+});
+```

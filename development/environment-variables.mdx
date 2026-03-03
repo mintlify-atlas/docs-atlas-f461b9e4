@@ -1,0 +1,365 @@
+---
+title: 'Environment Variables'
+description: 'Configure your application with required environment variables'
+---
+
+The Coders 2029 Hackathon Site requires several environment variables to function correctly. This guide documents all required and optional configuration.
+
+## Setup
+
+Create a `.env` file in the project root:
+
+```bash
+cp .env.example .env
+```
+
+Then configure the variables below according to your environment.
+
+## Required Variables
+
+### POSTGRES_URL
+
+**Type:** `string` (Database connection URL)
+
+The PostgreSQL database connection string used by Prisma.
+
+```bash
+POSTGRES_URL="postgresql://username:password@host:port/database"
+```
+
+#### Connection String Format
+
+The URL follows the standard PostgreSQL connection string format:
+
+```
+postgresql://[username[:password]@][host][:port]/[database][?parameters]
+```
+
+#### Setup-Specific Examples
+
+<CodeGroup>
+```bash Postgres.app (macOS)
+POSTGRES_URL="postgresql://username@localhost:5432/coders2029"
+```
+
+```bash Homebrew
+POSTGRES_URL="postgresql://username@localhost:5432/coders2029"
+```
+
+```bash Docker
+POSTGRES_URL="postgresql://postgres:secret@localhost:5432/coders2029"
+```
+
+```bash Neon (Cloud)
+POSTGRES_URL="postgresql://user:pass@ep-xxx.neon.tech/coders2029?sslmode=require"
+```
+
+```bash Vercel Postgres
+POSTGRES_URL="postgresql://user:pass@region.postgres.vercel-storage.com/database?sslmode=require"
+```
+</CodeGroup>
+
+<Note>
+  For local PostgreSQL installations (Postgres.app, Homebrew), run `whoami` to get your username.
+</Note>
+
+#### Usage in Code
+
+The connection URL is used in two places:
+
+**Prisma configuration** (`prisma.config.ts`):
+```typescript
+url: process.env["POSTGRES_URL"]
+```
+
+**Prisma Client adapter** (`lib/db/prisma.ts`):
+```typescript
+const adapter = new PrismaPg({ 
+  connectionString: process.env.POSTGRES_URL 
+});
+```
+
+---
+
+### AUTH_SECRET
+
+**Type:** `string` (Secret key for JWT signing)
+
+A secret key used to sign and verify JWT tokens for user authentication sessions.
+
+```bash
+AUTH_SECRET="your-secret-key-here"
+```
+
+#### Generating a Secure Secret
+
+Generate a cryptographically secure random string:
+
+<CodeGroup>
+```bash Node.js
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+```bash OpenSSL
+openssl rand -hex 32
+```
+
+```bash Python
+python3 -c "import secrets; print(secrets.token_hex(32))"
+```
+</CodeGroup>
+
+#### Alternative Variable Name
+
+The application also checks for `SECRET_AUTH` as a fallback:
+
+```typescript
+const rawSecret = process.env.AUTH_SECRET || process.env.SECRET_AUTH;
+```
+
+<Warning>
+  The application will throw an error on startup if neither `AUTH_SECRET` nor `SECRET_AUTH` is set.
+</Warning>
+
+#### Usage in Code
+
+Location: `lib/auth.ts`
+
+```typescript
+const rawSecret = process.env.AUTH_SECRET || process.env.SECRET_AUTH;
+if (!rawSecret || rawSecret.length === 0) {
+  throw new Error(
+    "Missing or empty AUTH_SECRET. Set AUTH_SECRET in your environment or .env file."
+  );
+}
+const SECRET = new TextEncoder().encode(rawSecret);
+```
+
+The secret is used for:
+- Signing JWTs during user login
+- Verifying JWTs on protected routes
+- Session management with 7-day expiration
+
+---
+
+### ADMIN_PASSWORD
+
+**Type:** `string` (Plain text password)
+
+The password required to access the admin dashboard at `/admin`.
+
+```bash
+ADMIN_PASSWORD="your-admin-password"
+```
+
+<Warning>
+  Use a strong, unique password. This password is checked as plain text (not hashed) for simplicity in this hackathon project.
+</Warning>
+
+#### Usage in Code
+
+Location: `lib/admin-actions.ts`
+
+```typescript
+export async function verifyAdminPassword(
+  password: string,
+): Promise<{ success: boolean; error?: string }> {
+  const adminPassword = process.env.ADMIN_PASSWORD;
+  if (!adminPassword) {
+    return { success: false, error: "Admin password not configured." };
+  }
+
+  if (password !== adminPassword) {
+    return { success: false, error: "Incorrect password." };
+  }
+
+  // Set admin session cookie (4-hour expiration)
+  // ...
+}
+```
+
+#### Admin Session
+
+Once authenticated, an admin session cookie is set with:
+- **Name:** `admin_session`
+- **Duration:** 4 hours
+- **HttpOnly:** `true`
+- **Secure:** `true` (in production)
+
+---
+
+## Optional Variables
+
+### NODE_ENV
+
+**Type:** `development` | `production` | `test`  
+**Default:** `development`
+
+The environment mode for the application.
+
+```bash
+NODE_ENV="production"
+```
+
+**Effects:**
+- Controls cookie `secure` flag (only HTTPS in production)
+- Affects Next.js optimizations
+- Used for conditional logging and error handling
+
+### PORT
+
+**Type:** `number`  
+**Default:** `3000`
+
+The port for the Next.js development server.
+
+```bash
+PORT=3001
+```
+
+Alternatively, specify at runtime:
+```bash
+PORT=3001 npm run dev
+```
+
+---
+
+## Environment File Structure
+
+Here's a complete `.env` file example:
+
+```bash
+# Database
+POSTGRES_URL="postgresql://username@localhost:5432/coders2029"
+
+# Authentication
+AUTH_SECRET="f4e5d6c7b8a9f0e1d2c3b4a5968778695a4b3c2d1e0f9a8b7c6d5e4f3a2b1c0d"
+
+# Admin
+ADMIN_PASSWORD="SecureAdminPass123!"
+
+# Optional
+NODE_ENV="development"
+```
+
+<Note>
+  Never commit your `.env` file to version control. The `.gitignore` should include `.env` to prevent accidental commits.
+</Note>
+
+---
+
+## Deployment Environments
+
+When deploying to hosting platforms, set these variables in your platform's dashboard.
+
+### Vercel
+
+1. Go to **Project Settings → Environment Variables**
+2. Add each variable:
+   - `POSTGRES_URL`
+   - `AUTH_SECRET`
+   - `ADMIN_PASSWORD`
+3. Select environments: Production, Preview, Development
+
+### Railway
+
+1. Open your project
+2. Go to **Variables** tab
+3. Add each variable as a new entry
+
+### Docker
+
+Pass variables via `-e` flag or `docker-compose.yml`:
+
+```yaml
+services:
+  app:
+    environment:
+      - POSTGRES_URL=${POSTGRES_URL}
+      - AUTH_SECRET=${AUTH_SECRET}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+```
+
+---
+
+## Security Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Strong Secrets" icon="key">
+    Use cryptographically secure random strings for `AUTH_SECRET`. Never use simple passwords or common phrases.
+  </Card>
+  <Card title="No Version Control" icon="file-slash">
+    Never commit `.env` files. Always use `.gitignore` and consider using `.env.example` as a template.
+  </Card>
+  <Card title="Separate Environments" icon="code-branch">
+    Use different values for development, staging, and production. Never share production secrets.
+  </Card>
+  <Card title="Rotate Regularly" icon="rotate">
+    Periodically rotate secrets, especially after team member changes or suspected compromises.
+  </Card>
+</CardGroup>
+
+---
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Missing AUTH_SECRET error on startup">
+    **Error:** `Missing or empty AUTH_SECRET. Set AUTH_SECRET in your environment or .env file.`
+
+    **Solution:**
+    1. Ensure `.env` file exists in project root
+    2. Add `AUTH_SECRET="your-secret-here"`
+    3. Generate a secure value using the commands in the AUTH_SECRET section
+    4. Restart the dev server
+  </Accordion>
+
+  <Accordion title="Database connection failed">
+    **Error:** `Can't reach database server at ...`
+
+    **Solution:**
+    1. Verify PostgreSQL is running
+    2. Check `POSTGRES_URL` format and credentials
+    3. Test connection with `psql` CLI:
+       ```bash
+       psql "postgresql://username@localhost:5432/coders2029"
+       ```
+    4. Ensure database `coders2029` exists
+  </Accordion>
+
+  <Accordion title="Admin password not working">
+    **Problem:** Admin login fails even with correct password
+
+    **Solution:**
+    1. Check for extra spaces in `ADMIN_PASSWORD` value
+    2. Ensure `.env` is in the project root (not in subdirectories)
+    3. Restart the dev server after changing `.env`
+    4. Verify the variable is loaded:
+       ```bash
+       node -e "require('dotenv').config(); console.log(process.env.ADMIN_PASSWORD)"
+       ```
+  </Accordion>
+
+  <Accordion title="Environment variables not loading">
+    **Problem:** Variables defined in `.env` are `undefined` at runtime
+
+    **Solution:**
+    1. Ensure `.env` is in the project root
+    2. Next.js automatically loads `.env` files
+    3. Restart the dev server completely (Ctrl+C, then `npm run dev`)
+    4. Check for syntax errors in `.env` (no spaces around `=`)
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Development Setup" icon="code" href="/development/setup">
+    Complete guide to setting up your local environment
+  </Card>
+  <Card title="Database Guide" icon="database" href="/development/database">
+    Learn about database configuration and Prisma usage
+  </Card>
+</CardGroup>

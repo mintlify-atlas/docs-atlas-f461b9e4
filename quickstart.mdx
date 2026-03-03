@@ -1,80 +1,434 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: Quickstart
+description: Get the Coders 2029 hackathon portal running locally in under 5 minutes
 ---
 
-## Get started in three steps
+# Quickstart Guide
 
-Get your documentation site running locally and make your first customization.
-
-### Step 1: Set up your local environment
-
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 2: Deploy your changes
-
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
-
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
-
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 3: Go live
-
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
-
-## Next steps
-
-Now that you have your docs running, explore these key features:
-
-<CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
-</CardGroup>
+This guide will walk you through setting up the Coders 2029 registration portal on your local machine. You'll be running the full application with authentication, team management, and the 3D hero canvas in just a few minutes.
 
 <Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
+  Make sure you have Node.js 18 or higher and PostgreSQL installed before starting.
 </Note>
+
+## Prerequisites
+
+Before you begin, ensure you have the following installed:
+
+<AccordionGroup>
+  <Accordion title="Node.js >= 18" icon="node-js">
+    Download and install Node.js from [nodejs.org](https://nodejs.org). Verify installation:
+    
+    ```bash
+    node --version
+    # Should output v18.x.x or higher
+    ```
+  </Accordion>
+  
+  <Accordion title="PostgreSQL" icon="database">
+    You'll need a PostgreSQL database. Choose one of these options:
+    
+    - **Postgres.app** (macOS): [postgresapp.com](https://postgresapp.com)
+    - **Homebrew** (macOS/Linux): `brew install postgresql@16`
+    - **Docker**: See the Docker setup section below
+    - **Neon** (Cloud): [neon.tech](https://neon.tech) - free tier available
+  </Accordion>
+  
+  <Accordion title="Git" icon="git">
+    Required to clone the repository. Install from [git-scm.com](https://git-scm.com).
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Installation
+
+<Steps>
+  <Step title="Clone the Repository">
+    Clone the Coders 2029 source code to your local machine:
+    
+    <CodeGroup>
+    ```bash npm
+    git clone <repository-url>
+    cd coders2029-site
+    npm install
+    ```
+    
+    ```bash yarn
+    git clone <repository-url>
+    cd coders2029-site
+    yarn install
+    ```
+    
+    ```bash pnpm
+    git clone <repository-url>
+    cd coders2029-site
+    pnpm install
+    ```
+    </CodeGroup>
+    
+    This will install all dependencies including:
+    - Next.js 16 with React 19
+    - Prisma ORM and PostgreSQL adapter
+    - Three.js and React Three Fiber
+    - shadcn/ui components
+  </Step>
+  
+  <Step title="Set Up PostgreSQL Database">
+    Create a PostgreSQL database named `coders2029`. Choose your preferred method:
+    
+    <Tabs>
+      <Tab title="Postgres.app (macOS)">
+        1. Download and install [Postgres.app](https://postgresapp.com)
+        2. Open the app and click **Initialize** or **Start**
+        3. Create the database:
+        
+        ```bash
+        /Applications/Postgres.app/Contents/Versions/latest/bin/createdb coders2029
+        ```
+        
+        Your connection string will be:
+        ```
+        postgresql://YOUR_USERNAME@localhost:5432/coders2029
+        ```
+        
+        <Tip>
+          Run `whoami` in terminal to get your macOS username.
+        </Tip>
+      </Tab>
+      
+      <Tab title="Homebrew">
+        Install and start PostgreSQL:
+        
+        ```bash
+        brew install postgresql@16
+        brew services start postgresql@16
+        createdb coders2029
+        ```
+        
+        Your connection string will be:
+        ```
+        postgresql://YOUR_USERNAME@localhost:5432/coders2029
+        ```
+      </Tab>
+      
+      <Tab title="Docker">
+        Run PostgreSQL in a Docker container:
+        
+        ```bash
+        docker run --name coders2029-db \
+          -e POSTGRES_PASSWORD=secret \
+          -e POSTGRES_DB=coders2029 \
+          -p 5432:5432 -d postgres:16
+        ```
+        
+        Your connection string will be:
+        ```
+        postgresql://postgres:secret@localhost:5432/coders2029
+        ```
+      </Tab>
+      
+      <Tab title="Neon (Cloud)">
+        1. Sign up at [neon.tech](https://neon.tech)
+        2. Create a new project named "coders2029"
+        3. Copy your connection string from the dashboard
+        
+        It will look like:
+        ```
+        postgresql://user:password@ep-xxx-xxx.neon.tech/coders2029?sslmode=require
+        ```
+      </Tab>
+    </Tabs>
+  </Step>
+  
+  <Step title="Configure Environment Variables">
+    Create a `.env` file in the project root:
+    
+    ```bash
+    touch .env
+    ```
+    
+    Add your database connection string and JWT secret:
+    
+    ```bash .env
+    # Database
+    POSTGRES_URL="postgresql://YOUR_USERNAME@localhost:5432/coders2029"
+    
+    # Authentication (generate a random secret)
+    JWT_SECRET="your-super-secret-jwt-key-change-this-in-production"
+    ```
+    
+    <Warning>
+      Replace `YOUR_USERNAME` with your actual username (run `whoami` on macOS/Linux). Use a strong, random JWT secret in production.
+    </Warning>
+    
+    **Example connection strings:**
+    
+    | Setup | Connection String |
+    |-------|-------------------|
+    | Postgres.app | `postgresql://john@localhost:5432/coders2029` |
+    | Homebrew | `postgresql://john@localhost:5432/coders2029` |
+    | Docker | `postgresql://postgres:secret@localhost:5432/coders2029` |
+    | Neon | `postgresql://user:pass@ep-cool-dream-123.neon.tech/coders2029?sslmode=require` |
+  </Step>
+  
+  <Step title="Run Database Migrations">
+    Generate the Prisma client and create database tables:
+    
+    <CodeGroup>
+    ```bash npm
+    npm run db:migrate
+    ```
+    
+    ```bash yarn
+    yarn db:migrate
+    ```
+    
+    ```bash pnpm
+    pnpm db:migrate
+    ```
+    </CodeGroup>
+    
+    This will:
+    1. Generate the Prisma Client based on your schema
+    2. Create migration files in `prisma/migrations/`
+    3. Apply migrations to create tables: `users`, `teams`, `site_settings`
+    
+    <Tip>
+      You'll be prompted to name your migration. Use something descriptive like "initial-schema" for the first one.
+    </Tip>
+  </Step>
+  
+  <Step title="Start the Development Server">
+    Launch the Next.js development server with Turbopack:
+    
+    <CodeGroup>
+    ```bash npm
+    npm run dev
+    ```
+    
+    ```bash yarn
+    yarn dev
+    ```
+    
+    ```bash pnpm
+    pnpm dev
+    ```
+    </CodeGroup>
+    
+    You should see:
+    
+    ```bash
+    ▲ Next.js 16.1.6
+    - Local:        http://localhost:3000
+    - Turbopack:    enabled
+    
+    ✓ Ready in 1.2s
+    ```
+    
+    Open [http://localhost:3000](http://localhost:3000) in your browser.
+  </Step>
+</Steps>
+
+---
+
+## Your First User Flow
+
+Now that the application is running, let's create your first user and team:
+
+<Steps>
+  <Step title="Create an Account">
+    1. Navigate to [http://localhost:3000](http://localhost:3000)
+    2. Click **Sign Up** in the navigation
+    3. Fill out the registration form:
+       - **Name**: Your full name
+       - **Email**: Use format `name.lastname25@spit.ac.in`
+       - **Roll Number**: Must start with `2025` (e.g., `2025123456`)
+       - **GitHub URL**: Your GitHub profile URL
+       - **Branch**: Select CE, CSE, or EXTC
+       - **Password**: At least 6 characters
+    
+    <Note>
+      Email validation checks for `@spit.ac.in` domain. Roll numbers must match the pattern `2025XXXXXX`.
+    </Note>
+  </Step>
+  
+  <Step title="Log In">
+    After successful signup, you'll be redirected to the login page:
+    
+    1. Enter your email and password
+    2. Click **Log In**
+    3. You'll be redirected to the team management page
+  </Step>
+  
+  <Step title="Create or Join a Team">
+    On the team page, you have two options:
+    
+    **Create a Team:**
+    1. Click **Create Team**
+    2. Enter a team name (e.g., "Code Warriors")
+    3. You'll receive a unique 6-character join code
+    4. Share this code with teammates (max 3 members total)
+    
+    **Join a Team:**
+    1. Click **Join Team**
+    2. Enter the join code from your team lead
+    3. You'll be added to the team roster
+    
+    <Tip>
+      Team leads (creators) can manage team settings and have the `isLead` flag set to `true`.
+    </Tip>
+  </Step>
+  
+  <Step title="Explore the 3D Hero">
+    Return to the home page to experience the immersive 3D canvas:
+    
+    - **Wireframe Icosahedron**: Cyan rotating geometry
+    - **Wireframe Torus Knot**: Purple floating shape
+    - **Orbiting Ring**: Dynamic ring that follows time
+    - **Particle Field**: 400 floating particles
+    - **Grid Floor**: Subtle ground plane
+    - **Stars**: Background starfield
+    
+    All animations run at 60fps using React Three Fiber's `useFrame` hook.
+  </Step>
+</Steps>
+
+---
+
+## Database Management
+
+Useful commands for working with your database:
+
+<CardGroup cols={2}>
+  <Card title="Prisma Studio" icon="database">
+    Open a visual database editor:
+    
+    ```bash
+    npm run db:studio
+    ```
+    
+    Access at [http://localhost:5555](http://localhost:5555)
+  </Card>
+  
+  <Card title="Push Schema Changes" icon="arrow-up">
+    Push schema changes without creating migrations:
+    
+    ```bash
+    npm run db:push
+    ```
+    
+    Useful for prototyping.
+  </Card>
+  
+  <Card title="Reset Database" icon="rotate-left">
+    Drop all tables and recreate:
+    
+    ```bash
+    npx prisma migrate reset
+    ```
+    
+    <Warning>This will delete all data!</Warning>
+  </Card>
+  
+  <Card title="Seed Database" icon="seedling">
+    Populate with test data:
+    
+    ```bash
+    npm run db:seed
+    ```
+    
+    Creates sample users and teams.
+  </Card>
+</CardGroup>
+
+---
+
+## Available Scripts
+
+Here are all the npm scripts available in `package.json`:
+
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start development server with Turbopack |
+| `npm run build` | Generate Prisma client and create production build |
+| `npm start` | Start production server |
+| `npm run lint` | Run Biome linter |
+| `npm run format` | Auto-format code with Biome |
+| `npm run db:migrate` | Create and apply Prisma migrations |
+| `npm run db:push` | Push schema changes without migrations |
+| `npm run db:studio` | Open Prisma Studio database GUI |
+| `npm run db:seed` | Seed database with test data |
+
+---
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Port 3000 already in use">
+    If another application is using port 3000:
+    
+    ```bash
+    # Kill the process on port 3000
+    lsof -ti:3000 | xargs kill -9
+    
+    # Or specify a different port
+    PORT=3001 npm run dev
+    ```
+  </Accordion>
+  
+  <Accordion title="Database connection failed">
+    Check your connection string:
+    
+    1. Verify PostgreSQL is running: `pg_isready`
+    2. Test connection: `psql postgresql://user@localhost:5432/coders2029`
+    3. Ensure database exists: `psql -l | grep coders2029`
+    4. Check `.env` file has correct `POSTGRES_URL`
+  </Accordion>
+  
+  <Accordion title="Prisma Client not generated">
+    If you see "Cannot find module '@prisma/client'":
+    
+    ```bash
+    npx prisma generate
+    ```
+    
+    This should happen automatically via the `postinstall` script.
+  </Accordion>
+  
+  <Accordion title="Three.js canvas not rendering">
+    The 3D canvas requires WebGL support. Check:
+    
+    1. Browser supports WebGL: [get.webgl.org](https://get.webgl.org)
+    2. Hardware acceleration is enabled in browser settings
+    3. No console errors related to Three.js
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Next Steps
+
+Now that you have the portal running, explore these topics:
+
+<CardGroup cols={2}>
+  <Card title="Authentication Deep Dive" icon="key" href="/features/authentication">
+    Learn about JWT sessions, bcrypt hashing, and auth middleware
+  </Card>
+  
+  <Card title="Team Management" icon="users" href="/features/team-management">
+    Understand team creation, join codes, and member limits
+  </Card>
+  
+  <Card title="Admin Dashboard" icon="gauge" href="/features/admin-dashboard">
+    Set up admin access and manage registrations
+  </Card>
+  
+  <Card title="Deploy to Production" icon="rocket" href="/deployment/overview">
+    Deploy to Vercel with Neon PostgreSQL
+  </Card>
+</CardGroup>
+
+<Tip>
+  Join the Coders 2029 community and share what you build! Check out the [API Reference](/api/auth-actions) for advanced integrations.
+</Tip>

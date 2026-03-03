@@ -1,0 +1,383 @@
+---
+title: 'Team Management'
+description: 'Create teams, invite members, and manage your hackathon squad'
+icon: 'users'
+---
+
+## Overview
+
+The hackathon platform allows participants to form teams of up to 3 members. Teams are managed through a simple join code system, with one member serving as the team leader.
+
+## Team Basics
+
+### Team Constraints
+
+- **Maximum members:** 3 per team
+- **Minimum members:** 1 (solo teams allowed)
+- **Membership:** Each user can only be in one team at a time
+- **Join codes:** 6-character alphanumeric codes (uppercase, excluding confusing characters)
+
+<Info>
+Users must be logged in to create or join teams. Team data is tied to authenticated user sessions.
+</Info>
+
+## Creating a Team
+
+### Creation Flow
+
+<Steps>
+  <Step title="Verify Eligibility">
+    Ensure you're not already in a team. Users must leave their current team before creating a new one.
+  </Step>
+  
+  <Step title="Choose Team Name">
+    Enter a team name (minimum 2 characters). This will be visible to all team members and in the admin dashboard.
+  </Step>
+  
+  <Step title="Submit Creation">
+    The system generates a unique 6-character join code and assigns you as the team leader.
+  </Step>
+  
+  <Step title="Share Join Code">
+    Share the join code with teammates so they can join your team.
+  </Step>
+</Steps>
+
+### Team Name Validation
+
+- **Minimum length:** 2 characters
+- **Error message:** "Team name must be at least 2 characters"
+- **No uniqueness requirement:** Multiple teams can have the same name
+
+### Join Code Generation
+
+When you create a team, the system automatically generates a unique join code:
+
+- **Length:** Exactly 6 characters
+- **Character set:** `ABCDEFGHJKLMNPQRSTUVWXYZ23456789`
+  - Excludes confusing characters: I, L, O, 0, 1
+  - All uppercase for consistency
+- **Uniqueness:** System ensures no duplicate codes exist (up to 10 generation attempts)
+
+<Accordion title="Example Join Codes">
+  - `A3B7K9`
+  - `QR4N8P`
+  - `Z2M5W6`
+</Accordion>
+
+### Team Leader Role
+
+The person who creates the team automatically becomes the **team leader** with special privileges:
+
+- Remove other members from the team
+- Team leadership automatically transfers if the leader leaves
+- Leaders cannot remove themselves (must use "Leave Team" instead)
+
+<Warning>
+You cannot create a team if you're already in one. The system will return: "You are already in a team."
+</Warning>
+
+## Joining a Team
+
+### Join Flow
+
+<Steps>
+  <Step title="Get Join Code">
+    Obtain the 6-character join code from a team leader or teammate.
+  </Step>
+  
+  <Step title="Enter Join Code">
+    Navigate to the join team page and enter the code. Codes are case-insensitive (automatically converted to uppercase).
+  </Step>
+  
+  <Step title="Submit Request">
+    The system validates the code and checks team capacity.
+  </Step>
+  
+  <Step title="Join Confirmation">
+    Upon success, you're added to the team as a regular member (not leader).
+  </Step>
+</Steps>
+
+### Join Code Validation
+
+- **Length:** Must be exactly 6 characters
+- **Case handling:** Automatically converted to uppercase
+- **Error messages:**
+  - Wrong length: "Join code must be 6 characters"
+  - Invalid code: "Invalid join code."
+
+### Join Requirements & Restrictions
+
+<Accordion title="Must Not Be in a Team">
+  Users already in a team cannot join another team.
+  
+  **Error:** "You are already in a team. Leave it first."
+  
+  **Solution:** Leave your current team before joining a new one.
+</Accordion>
+
+<Accordion title="Team Must Exist">
+  The join code must match an existing team.
+  
+  **Error:** "Invalid join code."
+  
+  **Solution:** Double-check the code with your team leader.
+</Accordion>
+
+<Accordion title="Team Must Have Space">
+  Teams are limited to 3 members maximum.
+  
+  **Error:** "Team is already full (max 3 members)."
+  
+  **Solution:** Join a different team or create your own.
+</Accordion>
+
+<Info>
+When you join a team, you're added as a regular member, not a leader. Only the team creator starts as leader.
+</Info>
+
+## Viewing Team Information
+
+### Team Dashboard
+
+Once in a team, users can view:
+
+- **Team name:** The name chosen during creation
+- **Join code:** For inviting additional members
+- **Member list:** All current team members with details:
+  - Name
+  - Email
+  - Roll number
+  - GitHub profile URL
+  - Branch (CE, CSE, or EXTC)
+  - Leader status badge
+- **Your role:** Whether you're the leader or a regular member
+
+### Member Ordering
+
+Members are displayed in order of when they joined (oldest first), so the leader typically appears first.
+
+## Leaving a Team
+
+### Leave Flow
+
+<Steps>
+  <Step title="Initiate Leave">
+    Click the "Leave Team" button from your team dashboard.
+  </Step>
+  
+  <Step title="Confirm Action">
+    Confirm you want to leave the team.
+  </Step>
+  
+  <Step title="Removal Processing">
+    Your team association is removed and leader status is cleared.
+  </Step>
+  
+  <Step title="Leadership Transfer">
+    If you were the leader and members remain, leadership transfers to the earliest remaining member.
+  </Step>
+  
+  <Step title="Team Cleanup">
+    If you were the last member, the team is automatically deleted.
+  </Step>
+</Steps>
+
+### Leadership Transfer Logic
+
+When a team leader leaves:
+
+<Tabs>
+  <Tab title="Team Has Other Members">
+    - Leadership automatically transfers to the member who joined earliest
+    - Team continues to exist with new leader
+    - Join code remains the same
+    - All team data preserved
+  </Tab>
+  
+  <Tab title="Leader is Last Member">
+    - Team is automatically deleted from the system
+    - Join code becomes invalid
+    - No cleanup needed by user
+  </Tab>
+</Tabs>
+
+<Warning>
+Leaving a team is permanent. You'll need a new join code to rejoin, and the team may be full by then.
+</Warning>
+
+### Leave Validation
+
+- **Must be in a team:** Can't leave if not currently in one
+  - Error: "You are not in a team."
+- **Must be logged in:** Authentication required
+  - Error: "You must be logged in."
+
+## Removing Members (Leader Only)
+
+### Remove Flow
+
+Team leaders can remove other members:
+
+<Steps>
+  <Step title="Verify Leadership">
+    Only team leaders can remove members.
+  </Step>
+  
+  <Step title="Select Member">
+    Choose which member to remove from your team.
+  </Step>
+  
+  <Step title="Confirm Removal">
+    Confirm the removal action.
+  </Step>
+  
+  <Step title="Member Removed">
+    The member is removed from the team and can join another team or create their own.
+  </Step>
+</Steps>
+
+### Remove Validation
+
+<Accordion title="Must Be Team Leader">
+  Only the current team leader can remove members.
+  
+  **Error:** "Only the team leader can remove members."
+  
+  **Solution:** Ask your team leader to perform the removal.
+</Accordion>
+
+<Accordion title="Member Must Be on Same Team">
+  Can only remove members from your own team.
+  
+  **Error:** "Member not found in your team."
+  
+  **Solution:** Verify the member ID is correct.
+</Accordion>
+
+<Accordion title="Cannot Remove Leader">
+  Leaders cannot remove themselves using this function.
+  
+  **Error:** "You cannot remove yourself as leader. Use 'Leave Team' instead."
+  
+  **Solution:** Use the "Leave Team" function which handles leadership transfer automatically.
+</Accordion>
+
+<Info>
+Removed members are not notified automatically. Consider communicating with your team before removing someone.
+</Info>
+
+## Team States & Transitions
+
+### User State Diagram
+
+```
+[No Team] ──create team──> [Team Leader]
+    │
+    └──join team──> [Team Member]
+
+[Team Leader] ──leave team──> [No Team]
+    │                           (leadership transfers)
+    └──remove member──> [Team Leader]
+                        (member → no team)
+
+[Team Member] ──leave team──> [No Team]
+    │
+    └──removed by leader──> [No Team]
+```
+
+### Team State Transitions
+
+<Accordion title="Empty → Active">
+  When a user creates a team, it becomes active with 1 member (the leader).
+</Accordion>
+
+<Accordion title="Active → Full">
+  When a team reaches 3 members, no more users can join using the join code.
+</Accordion>
+
+<Accordion title="Full → Active">
+  When a member leaves a full team, space opens up for a new member.
+</Accordion>
+
+<Accordion title="Active → Deleted">
+  When the last member leaves, the team is automatically deleted.
+</Accordion>
+
+## Common Error Messages
+
+| Error | Cause | Solution |
+|-------|-------|----------|
+| "You must be logged in." | Not authenticated | Log in to your account |
+| "You are already in a team." | Already in a team | Leave current team first |
+| "Team name must be at least 2 characters" | Name too short | Use longer team name |
+| "Invalid join code." | Code doesn't exist | Check code with team leader |
+| "Team is already full (max 3 members)." | Team at capacity | Try different team |
+| "You are already in a team. Leave it first." | Can't join multiple teams | Leave current team |
+| "You are not in a team." | Trying to leave when not in team | No action needed |
+| "Only the team leader can remove members." | Not the leader | Ask leader to remove |
+| "Member not found in your team." | Invalid member ID | Verify member identity |
+| "Session expired. Please log out and sign up again." | Session invalid | Log out and back in |
+
+## Best Practices
+
+### For Team Leaders
+
+<Accordion title="Communicate Join Code Securely">
+  - Share join code only with intended teammates
+  - Don't post publicly to prevent random joins
+  - Change teams if code is compromised (by leaving and creating new team)
+</Accordion>
+
+<Accordion title="Manage Team Size">
+  - Confirm teammate availability before sharing code
+  - Remove inactive members if needed to free space
+  - Remember the 3-member limit when inviting
+</Accordion>
+
+<Accordion title="Handle Leadership Carefully">
+  - Coordinate with team before leaving (leadership transfers automatically)
+  - Use "Leave Team" instead of trying to remove yourself
+  - Trust will transfer to earliest joining member
+</Accordion>
+
+### For Team Members
+
+<Accordion title="Join Early">
+  - Teams fill up quickly with the 3-member limit
+  - Join as soon as you receive a valid code
+  - Have backup team options ready
+</Accordion>
+
+<Accordion title="Verify Team Before Joining">
+  - Confirm team name and leader before joining
+  - Make sure you know who you're teaming up with
+  - Remember you can only be in one team at a time
+</Accordion>
+
+<Accordion title="Coordinate Before Leaving">
+  - Communicate with teammates before leaving
+  - Especially important if you're the leader (auto-transfer occurs)
+  - Consider team commitments before joining
+</Accordion>
+
+## Technical Details
+
+### Database Relationships
+
+- Users have optional `teamId` foreign key
+- Teams have multiple users through the `teamId` relationship
+- `isLead` boolean flag on users indicates leader status
+- Team deletion cascades to update user `teamId` to null
+
+### Join Code Collision Handling
+
+The system attempts to generate unique join codes:
+- Up to 10 attempts to find unused code
+- If all 10 attempts result in duplicates, creation fails
+- With 6 characters from 32-character set, collision is extremely rare (≈1 billion possible codes)
+
+<Info>
+Join codes use a character set excluding visually similar characters (I/1, L/1, O/0) to prevent confusion when sharing codes verbally or via screenshots.
+</Info>

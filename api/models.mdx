@@ -1,0 +1,509 @@
+---
+title: 'Database Models'
+description: 'Detailed documentation of all Prisma models, fields, and constraints'
+icon: 'cube'
+---
+
+## Overview
+
+This page provides complete field-level documentation for all database models in the Coders 2029 schema.
+
+## Models
+
+<Tabs>
+  <Tab title="Team">
+    ## Team Model
+
+    Represents a hackathon team with a unique join code that members can use to join.
+
+    ### Database Table
+    ```
+    teams
+    ```
+
+    ### Fields
+
+    <ParamField path="id" type="String" required>
+      **Primary Key** — UUID v4 identifier for the team
+      
+      - Database type: `UUID`
+      - Auto-generated using `uuid()`
+      - Format: `xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx`
+    </ParamField>
+
+    <ParamField path="teamName" type="String" required>
+      The display name of the team
+      
+      - Database column: `team_name`
+      - No length constraints defined
+      - User-provided during team creation
+    </ParamField>
+
+    <ParamField path="joinCode" type="String" required>
+      **Unique** — Code that members use to join the team
+      
+      - Database column: `join_code`
+      - Must be unique across all teams
+      - Indexed for fast lookup
+      - Generated automatically on team creation
+    </ParamField>
+
+    <ParamField path="createdAt" type="DateTime" required>
+      Timestamp of when the team was created
+      
+      - Database column: `created_at`
+      - Database type: `TIMESTAMPTZ` (timezone-aware)
+      - Default: `now()` — set automatically on creation
+    </ParamField>
+
+    <ParamField path="members" type="User[]">
+      **Relation** — Array of users who are members of this team
+      
+      - One-to-many relationship with User model
+      - Optional: Teams can exist without members initially
+      - Accessed via `team.members` in queries
+    </ParamField>
+
+    ### Indexes
+
+    <CodeGroup>
+    ```sql Index on joinCode
+    CREATE INDEX ON teams(join_code);
+    ```
+    </CodeGroup>
+
+    This index optimizes queries when looking up teams by their join code (common operation when users join teams).
+
+    ### Constraints
+
+    - **Primary Key:** `id`
+    - **Unique:** `joinCode`
+
+    ### Prisma Schema
+
+    ```prisma
+    model Team {
+      id        String   @id @default(uuid()) @db.Uuid
+      teamName  String   @map("team_name")
+      joinCode  String   @unique @map("join_code")
+      createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+      members   User[]
+
+      @@index([joinCode])
+      @@map("teams")
+    }
+    ```
+
+    ### Example Usage
+
+    <CodeGroup>
+    ```typescript Create Team
+    const team = await prisma.team.create({
+      data: {
+        teamName: "Code Ninjas",
+        joinCode: "ABC123XYZ"
+      }
+    });
+    ```
+
+    ```typescript Query with Members
+    const team = await prisma.team.findUnique({
+      where: { joinCode: "ABC123XYZ" },
+      include: { members: true }
+    });
+    ```
+    </CodeGroup>
+
+  </Tab>
+  
+  <Tab title="User">
+    ## User Model
+
+    Represents an individual hackathon participant with authentication credentials and profile information.
+
+    ### Database Table
+    ```
+    users
+    ```
+
+    ### Fields
+
+    <ParamField path="id" type="String" required>
+      **Primary Key** — UUID v4 identifier for the user
+      
+      - Database type: `UUID`
+      - Auto-generated using `uuid()`
+      - Format: `xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx`
+    </ParamField>
+
+    <ParamField path="name" type="String" required>
+      Full name of the user
+      
+      - No database column mapping (uses field name)
+      - No length constraints defined
+      - User-provided during registration
+    </ParamField>
+
+    <ParamField path="email" type="String" required>
+      **Unique** — Email address for authentication and contact
+      
+      - Must be unique across all users
+      - Used for login authentication
+      - No format validation at schema level (handled in application)
+    </ParamField>
+
+    <ParamField path="rollNumber" type="String" required>
+      **Unique** — Student roll/registration number
+      
+      - Database column: `roll_number`
+      - Must be unique across all users
+      - Typically college-issued identifier
+    </ParamField>
+
+    <ParamField path="githubUrl" type="String" required>
+      GitHub profile URL of the user
+      
+      - Database column: `github_url`
+      - Expected format: `https://github.com/username`
+      - No uniqueness constraint (multiple users could theoretically share)
+    </ParamField>
+
+    <ParamField path="branch" type="Branch" required>
+      Engineering branch/department of the user
+      
+      - Enum type with values: `CE`, `CSE`, `EXTC`
+      - See [Branch Enum](#branch-enum) for details
+    </ParamField>
+
+    <ParamField path="password" type="String" required>
+      Hashed password for authentication
+      
+      - Stored as bcrypt hash (never plain text)
+      - Hashed in application layer before database storage
+      - Should never be included in API responses
+    </ParamField>
+
+    <ParamField path="teamId" type="String" optional>
+      **Foreign Key** — Reference to the user's team
+      
+      - Database column: `team_id`
+      - Database type: `UUID`
+      - Nullable: Users can exist without a team
+      - References: `Team.id`
+    </ParamField>
+
+    <ParamField path="isLead" type="Boolean" required>
+      Indicates if this user is the team leader
+      
+      - Database column: `is_lead`
+      - Default: `false`
+      - Only one user per team should have this set to `true`
+    </ParamField>
+
+    <ParamField path="createdAt" type="DateTime" required>
+      Timestamp of when the user registered
+      
+      - Database column: `created_at`
+      - Database type: `TIMESTAMPTZ` (timezone-aware)
+      - Default: `now()` — set automatically on creation
+    </ParamField>
+
+    <ParamField path="team" type="Team" optional>
+      **Relation** — The team this user belongs to
+      
+      - Many-to-one relationship with Team model
+      - Optional: Can be `null` if user hasn't joined a team
+      - Delete behavior: `SetNull` — if team is deleted, user remains but `teamId` becomes null
+      - Accessed via `user.team` in queries
+    </ParamField>
+
+    ### Constraints
+
+    - **Primary Key:** `id`
+    - **Unique:** `email`, `rollNumber`
+    - **Foreign Key:** `teamId` → `Team.id` (ON DELETE SET NULL)
+
+    ### Prisma Schema
+
+    ```prisma
+    model User {
+      id         String   @id @default(uuid()) @db.Uuid
+      name       String
+      email      String   @unique
+      rollNumber String   @unique @map("roll_number")
+      githubUrl  String   @map("github_url")
+      branch     Branch
+      password   String
+      teamId     String?  @map("team_id") @db.Uuid
+      isLead     Boolean  @default(false) @map("is_lead")
+      createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+      team       Team?    @relation(fields: [teamId], references: [id], onDelete: SetNull)
+
+      @@map("users")
+    }
+    ```
+
+    ### Example Usage
+
+    <CodeGroup>
+    ```typescript Create User
+    const user = await prisma.user.create({
+      data: {
+        name: "John Doe",
+        email: "john@example.com",
+        rollNumber: "2021-CE-001",
+        githubUrl: "https://github.com/johndoe",
+        branch: "CE",
+        password: hashedPassword, // bcrypt hash
+        isLead: true
+      }
+    });
+    ```
+
+    ```typescript Query with Team
+    const user = await prisma.user.findUnique({
+      where: { email: "john@example.com" },
+      include: { team: true }
+    });
+    ```
+
+    ```typescript Update Team Membership
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: { teamId: teamId }
+    });
+    ```
+    </CodeGroup>
+
+    <Note>
+      Always hash passwords using bcrypt before storing them in the database. Never query or return the password field in API responses.
+    </Note>
+
+  </Tab>
+  
+  <Tab title="SiteSettings">
+    ## SiteSettings Model
+
+    Singleton model for global site configuration. Only one record exists in this table.
+
+    ### Database Table
+    ```
+    site_settings
+    ```
+
+    ### Fields
+
+    <ParamField path="id" type="String" required>
+      **Primary Key** — Fixed value: `"singleton"`
+      
+      - Hardcoded to ensure only one settings record exists
+      - Default: `"singleton"`
+      - Not a UUID — uses string literal for singleton pattern
+    </ParamField>
+
+    <ParamField path="registrationOpen" type="Boolean" required>
+      Controls whether new user registrations are allowed
+      
+      - Database column: `registration_open`
+      - Default: `true`
+      - Admin dashboard can toggle this value
+      - When `false`, signup is disabled site-wide
+    </ParamField>
+
+    ### Constraints
+
+    - **Primary Key:** `id` (always `"singleton"`)
+
+    ### Singleton Pattern
+
+    This model uses the singleton pattern to ensure only one settings record exists:
+
+    <Steps>
+      <Step title="Fixed ID">
+        The `id` field defaults to `"singleton"`, preventing multiple records
+      </Step>
+      <Step title="Upsert Operations">
+        Always use `upsert` when modifying settings to handle create/update automatically
+      </Step>
+      <Step title="Single Record">
+        Query using `findUnique({ where: { id: "singleton" } })`
+      </Step>
+    </Steps>
+
+    ### Prisma Schema
+
+    ```prisma
+    model SiteSettings {
+      id                  String  @id @default("singleton")
+      registrationOpen    Boolean @default(true) @map("registration_open")
+
+      @@map("site_settings")
+    }
+    ```
+
+    ### Example Usage
+
+    <CodeGroup>
+    ```typescript Get Settings
+    const settings = await prisma.siteSettings.findUnique({
+      where: { id: "singleton" }
+    });
+
+    const isOpen = settings?.registrationOpen ?? true;
+    ```
+
+    ```typescript Update Settings (Upsert)
+    const settings = await prisma.siteSettings.upsert({
+      where: { id: "singleton" },
+      update: { registrationOpen: false },
+      create: {
+        id: "singleton",
+        registrationOpen: false
+      }
+    });
+    ```
+
+    ```typescript Toggle Registration
+    const current = await prisma.siteSettings.findUnique({
+      where: { id: "singleton" }
+    });
+
+    await prisma.siteSettings.update({
+      where: { id: "singleton" },
+      data: { registrationOpen: !current?.registrationOpen }
+    });
+    ```
+    </CodeGroup>
+
+    <Warning>
+      Never delete the site settings record. Always use `upsert` or `update` operations to modify settings safely.
+    </Warning>
+
+  </Tab>
+</Tabs>
+
+## Enums
+
+### Branch Enum
+
+Represents the engineering branch/department affiliation.
+
+```prisma
+enum Branch {
+  CE
+  CSE
+  EXTC
+}
+```
+
+<ParamField path="CE" type="enum">
+  Computer Engineering
+</ParamField>
+
+<ParamField path="CSE" type="enum">
+  Computer Science Engineering
+</ParamField>
+
+<ParamField path="EXTC" type="enum">
+  Electronics and Telecommunication Engineering
+</ParamField>
+
+### Usage Example
+
+```typescript
+import { Branch } from '@prisma/client';
+
+const user = await prisma.user.create({
+  data: {
+    // ... other fields
+    branch: Branch.CSE // or "CSE" as string
+  }
+});
+```
+
+## Common Patterns
+
+### Team Creation with Leader
+
+```typescript
+const result = await prisma.team.create({
+  data: {
+    teamName: "Code Warriors",
+    joinCode: generateJoinCode(),
+    members: {
+      connect: { id: userId } // Connect existing user as first member
+    }
+  },
+  include: { members: true }
+});
+
+// Mark user as team lead
+await prisma.user.update({
+  where: { id: userId },
+  data: { isLead: true }
+});
+```
+
+### Join Team by Code
+
+```typescript
+const team = await prisma.team.findUnique({
+  where: { joinCode: code },
+  include: { members: true }
+});
+
+if (team && team.members.length < 3) {
+  await prisma.user.update({
+    where: { id: userId },
+    data: { teamId: team.id }
+  });
+}
+```
+
+### Check Registration Status
+
+```typescript
+const settings = await prisma.siteSettings.findUnique({
+  where: { id: "singleton" }
+});
+
+if (!settings?.registrationOpen) {
+  throw new Error("Registration is currently closed");
+}
+```
+
+## Type Safety
+
+Prisma generates TypeScript types for all models:
+
+```typescript
+import { Team, User, SiteSettings, Branch } from '@prisma/client';
+
+// Full model types
+type TeamWithMembers = Team & { members: User[] };
+type UserWithTeam = User & { team: Team | null };
+
+// Partial types for creation
+type CreateUserInput = Omit<User, 'id' | 'createdAt' | 'teamId' | 'isLead'>;
+```
+
+## Database Conventions
+
+<CardGroup cols={2}>
+  <Card title="Field Naming" icon="text">
+    - **Prisma:** camelCase (`teamName`, `isLead`)
+    - **Database:** snake_case (`team_name`, `is_lead`)
+  </Card>
+  <Card title="Table Naming" icon="table">
+    - Plural form (`teams`, `users`, `site_settings`)
+    - Mapped via `@@map` directive
+  </Card>
+  <Card title="Primary Keys" icon="key">
+    - UUIDs for all entity models
+    - String literal for singleton (SiteSettings)
+  </Card>
+  <Card title="Timestamps" icon="clock">
+    - Timezone-aware (`@db.Timestamptz`)
+    - Auto-generated with `@default(now())`
+  </Card>
+</CardGroup>
